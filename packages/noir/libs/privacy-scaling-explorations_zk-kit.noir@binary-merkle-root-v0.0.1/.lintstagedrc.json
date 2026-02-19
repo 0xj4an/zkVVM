@@ -1,0 +1,3 @@
+{
+  "**/*.{js,json,md,nr,toml,yml,yaml}": "fmt"
+}

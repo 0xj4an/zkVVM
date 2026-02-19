@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "module": "commonjs",
+    "target": "es6",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true, // Add this line
+    "types": ["mocha", "node"]
+  },
+  "include": [
+    "./src/**/*.ts",
+    "./tests/**/*.ts",
+    "./scripts/**/*.ts"
+  ],
+  "exclude": [
+    "./dist"
+  ]
+}

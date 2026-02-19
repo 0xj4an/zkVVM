@@ -1,0 +1,45 @@
+{
+  "name": "vite-hardhat",
+  "description": "A template repository to get started with writing zero knowledge programs with Noir.",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "deploy": "bunx hardhat deploy",
+    "dev": "bun --filter vite dev",
+    "test:up": "bun test ./tests/up.test.ts",
+    "test:uh": "bun test ./tests/uh.test.ts",
+    "test": "bun test:up && bun test:uh",
+    "node": "bunx hardhat node"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
+    "@types/bun": "^1.1.12",
+    "hardhat": "^2.19.2"
+  },
+  "dependencies": {
+    "@aztec/bb.js": "0.63.1",
+    "@noir-lang/noir_js": "1.0.0-beta.0",
+    "@noir-lang/noir_wasm": "1.0.0-beta.0",
+    "@noir-lang/types": "1.0.0-beta.0",
+    "@nomicfoundation/hardhat-ethers": "^3.0.6",
+    "@nomicfoundation/hardhat-ignition": "^0.15.5",
+    "@nomicfoundation/hardhat-ignition-viem": "^0.15.5",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.11",
+    "@nomicfoundation/hardhat-toolbox-viem": "3.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.8",
+    "@nomicfoundation/hardhat-viem": "2.0.2",
+    "@types/mocha": "^10.0.1",
+    "@types/shelljs": "^0.8.7",
+    "commander": "^12.1.0",
+    "dotenv": "^16.0.3",
+    "hardhat-gas-reporter": "^1.0.9",
+    "hardhat-noirenberg": "0.2.0",
+    "shelljs": "^0.8.5",
+    "solidity-coverage": "^0.8.5",
+    "typescript": "^5.6.3",
+    "viem": "^2.46.2"
+  }
+}

@@ -1,0 +1,10 @@
+# dependencies
+node_modules
+bun.lockb
+
+# github
+.github/ISSUE_TEMPLATE
+
+# misc
+.DS_Store
+*.pem

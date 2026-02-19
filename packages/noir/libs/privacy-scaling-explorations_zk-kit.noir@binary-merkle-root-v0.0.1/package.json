@@ -1,0 +1,47 @@
+{
+  "name": "zk-kit.noir",
+  "description": "A monorepo of reusable Noir circuits.",
+  "license": "MIT",
+  "repository": "git@github.com:privacy-scaling-explorations/zk-kit.noir.git",
+  "homepage": "https://github.com/privacy-scaling-explorations/zk-kit.noir",
+  "bugs": "https://github.com/privacy-scaling-explorations/zk-kit.noir/issues",
+  "private": true,
+  "scripts": {
+    "check": "concurrently -c auto -n dprint,noirfmt 'dprint check' 'nargo fmt --check'",
+    "fmt": "concurrently -c auto -n dprint,noirfmt 'dprint fmt' 'nargo fmt'",
+    "postinstall": "husky && git config --local core.editor cat",
+    "build": "nargo compile",
+    "test": "bun run build && mocha && nargo test --workspace",
+    "version:tag": "bun scripts/create-tag.ts",
+    "version:release": "changelogithub"
+  },
+  "keywords": [
+    "zk-kit",
+    "noir",
+    "monorepo",
+    "zero-knowledge",
+    "zk-snarks"
+  ],
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@aztec/bb.js": "^0.63.0",
+    "@commitlint/cli": "^19.3.0",
+    "@commitlint/config-conventional": "^19.2.2",
+    "@noir-lang/noir_js": "^0.39.0",
+    "@noir-lang/noir_wasm": "^0.39.0",
+    "@types/chai": "^4",
+    "@types/mocha": "^10",
+    "chai": "^4.5.0",
+    "changelogithub": "^13.13.0",
+    "concurrently": "^9.1.0",
+    "czg": "^1.9.1",
+    "dprint": "^0.46.3",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2",
+    "mocha": "^10.7.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
