@@ -3,7 +3,7 @@
   "type": "module",
   "description": "A template repository to get started with writing zero knowledge programs with Noir.",
   "scripts": {
-    "dev": "bun wagmi && vite dev",
+    "dev": "vite dev",
     "wagmi": "wagmi generate"
   },
   "dependencies": {

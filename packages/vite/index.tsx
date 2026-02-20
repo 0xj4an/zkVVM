@@ -15,23 +15,15 @@ import { ToastContainer } from 'react-toastify';
 import Component from './components/index.jsx';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { defineChain, createClient } from 'viem';
+import { createClient } from 'viem';
+import { sepolia } from 'viem/chains';
 import { injected } from 'wagmi/connectors';
-import { networkConfig } from '../../deployment.json';
 
 const queryClient = new QueryClient();
 
-const { id, name, nativeCurrency, rpcUrls } = networkConfig;
-const chain = defineChain({
-  id,
-  name,
-  nativeCurrency,
-  rpcUrls,
-});
-
 const config = createConfig({
   connectors: [injected()],
-  chains: [chain],
+  chains: [sepolia],
   client({ chain }) {
     return createClient({ chain, transport: http() });
   },

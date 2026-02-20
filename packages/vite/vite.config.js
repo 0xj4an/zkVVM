@@ -2,6 +2,9 @@ import react from '@vitejs/plugin-react-swc';
 
 export default {
   assetsInclude: ['**/*.wasm'],
+  build: {
+    target: 'esnext',
+  },
   optimizeDeps: {
     esbuildOptions: {
       target: 'esnext',

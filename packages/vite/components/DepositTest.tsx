@@ -1,23 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useAccount } from 'wagmi';
-import { bytesToHex } from 'viem';
+import { bytesToHex, keccak256, encodePacked } from 'viem';
 import { Noir } from '@noir-lang/noir_js';
 import { UltraPlonkBackend } from '@aztec/bb.js';
 import { useDeposit } from '../hooks/useDeposit.js';
 import { toast } from 'react-toastify';
 import { parseUsdcAmount, formatUsdcAmount } from '../lib/usdc.js';
-import { generateNote, saveNote, loadNote, NoteData } from '../lib/note.js';
+import { generateNote, saveNote, loadNote } from '../lib/note.js';
 import { getCircuit } from '../../noir/compile.js';
 
 export function DepositTest() {
-  const { address: walletAddress } = useAccount();
   const {
     isConnected,
-    connect,
-    disconnect,
+    address: walletAddress,
     deposit,
     registerRoot,
-    withdraw,
+    withdrawV2b,
     isPending,
     isSuccess,
     error,
@@ -131,10 +128,28 @@ export function DepositTest() {
         autoClose: 3000,
       });
 
-      // Submit on-chain — confirmation handled by isSuccess effect
+      // Build 5 publicInputs in withdrawV2b contract order:
+      // [nullifier, merkle_proof_length, expected_merkle_root, recipient, commitment]
+      const pad32 = (v: bigint) => ('0x' + v.toString(16).padStart(64, '0')) as `0x${string}`;
+      const publicInputs: `0x${string}`[] = [
+        note.nullifier as `0x${string}`,
+        pad32(BigInt(note.merkle_proof_length)),
+        note.expected_merkle_root as `0x${string}`,
+        recipientPadded,
+        note.commitment as `0x${string}`,
+      ];
+
+      // Generate ciphertext: encrypt amount using key derived from nullifier + recipient + POOL_SALT
+      const POOL_SALT = keccak256(encodePacked(['string'], ['ShieldedPool.v2b']));
+      const key = keccak256(encodePacked(
+        ['bytes32', 'bytes32', 'bytes32'],
+        [note.nullifier as `0x${string}`, recipientPadded, POOL_SALT],
+      ));
+      const stream = keccak256(encodePacked(['bytes32', 'uint256'], [key, 0n]));
+      const ciphertext = pad32(BigInt(note.value) ^ BigInt(stream));
+
       const proofHex = bytesToHex(proofData.proof);
-      const publicInputs = proofData.publicInputs as `0x${string}`[];
-      withdraw(proofHex, publicInputs);
+      withdrawV2b(proofHex, publicInputs, ciphertext);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Proof generation failed';
       toast.update(toastId, {
@@ -163,10 +178,9 @@ export function DepositTest() {
     return (
       <section className="card">
         <h2>Shielded Pool</h2>
-        <p className="description">Connect your wallet to start.</p>
-        <button className="btn-primary" type="button" onClick={() => connect()}>
-          Connect Wallet
-        </button>
+        <p className="description">
+          Set <code>VITE_PRIVATE_KEY</code> in <code>.env</code> to enable transactions.
+        </p>
       </section>
     );
   }
@@ -186,7 +200,7 @@ export function DepositTest() {
       <section className="card">
         <h2>Deposit</h2>
         <p className="description">
-          Shielded deposit. Commitment generated from your wallet + timestamp.
+          Shielded deposit from <code>{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</code>
         </p>
 
         <form onSubmit={handleDeposit}>
@@ -207,9 +221,6 @@ export function DepositTest() {
           <div className="btn-row">
             <button className="btn-primary" type="submit" disabled={isPending || isGeneratingNote}>
               {depositLabel}
-            </button>
-            <button type="button" onClick={() => disconnect()}>
-              Disconnect
             </button>
           </div>
         </form>

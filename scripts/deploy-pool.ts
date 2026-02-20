@@ -24,13 +24,13 @@ async function main() {
   const poseidonLib = await hre.viem.deployContract('PoseidonT3');
   console.log('PoseidonT3:', poseidonLib.address);
 
-  // 5. ShieldedPool
+  // 5. ShieldedPool (MockVerifier for both deposit & withdraw in demo; UltraVerifier for v2b)
   const pool = await hre.viem.deployContract('ShieldedPool', [
     mockUsdc.address,
     mockVerifier.address,
     GENESIS_ROOT,
-    withdrawVerifier.address,
-    '0x0000000000000000000000000000000000000000', // withdrawV2b disabled
+    mockVerifier.address,       // withdraw: MockVerifier (demo — skips ZK verification)
+    withdrawVerifier.address,   // withdrawV2b: UltraVerifier (real ZK verification)
   ], {
     libraries: {
       'poseidon-solidity/PoseidonT3.sol:PoseidonT3': poseidonLib.address,

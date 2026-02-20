@@ -1,6 +1,6 @@
 {
-  "poolAddress": "0x8d10ad45b21d4db2e7270e519a757c764c6501ac",
-  "usdcAddress": "0x9b5cdf523ce2c706db157ee2135ffeea68674772",
-  "verifierAddress": "0x3c453536fa6ce97ee92f186ee954e89ab316e315",
-  "withdrawVerifierAddress": "0x1d42c0cd5ff14ee71456473828996b1bc251a735"
+  "poolAddress": "0x0f86796c3f3254442debd0705a56bdd82c69f4a6",
+  "usdcAddress": "0xd9aee9351f7685b05a6b7bd8c1ca509d24be1e57",
+  "verifierAddress": "0xcdc6ade9d348572f302690bd39ba8120f8e91db3",
+  "withdrawVerifierAddress": "0xf62e5a932a832c8ea990dedd87a05162c8905224"
 }

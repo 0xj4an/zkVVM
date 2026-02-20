@@ -7,7 +7,7 @@ A privacy-preserving **Shielded Pool** protocol built with [Noir](https://noir-l
 > See [PITCH.md](PITCH.md) for the full vision and narrative.
 
 ## Architecture
-
+pero
 ```text
 zkVVM/
 ├── packages/
@@ -227,16 +227,29 @@ bun run gen-ciphertext
 
 See [PROVER_WORKFLOW.md](packages/noir/PROVER_WORKFLOW.md) for the full variable-amount proving workflow.
 
+## Deployed Contracts (Sepolia)
+
+| Contract | Address |
+| -------- | ------- |
+| ShieldedPool | [`0x0f86796c3f3254442debd0705a56bdd82c69f4a6`](https://sepolia.etherscan.io/address/0x0f86796c3f3254442debd0705a56bdd82c69f4a6) |
+| UltraVerifier | [`0xf62e5a932a832c8ea990dedd87a05162c8905224`](https://sepolia.etherscan.io/address/0xf62e5a932a832c8ea990dedd87a05162c8905224) |
+| MockERC20 | [`0xd9aee9351f7685b05a6b7bd8c1ca509d24be1e57`](https://sepolia.etherscan.io/address/0xd9aee9351f7685b05a6b7bd8c1ca509d24be1e57) |
+| MockVerifier | [`0xcdc6ade9d348572f302690bd39ba8120f8e91db3`](https://sepolia.etherscan.io/address/0xcdc6ade9d348572f302690bd39ba8120f8e91db3) |
+| PoseidonT3 | [`0xc300285105b376b9e0cf7ed78ec42b74d9c3d060`](https://sepolia.etherscan.io/address/0xc300285105b376b9e0cf7ed78ec42b74d9c3d060) |
+
 ## Deploying to Testnets
 
-Supported networks: **Holesky**, **Scroll Sepolia** (add more in `hardhat.config.cts`).
+Supported networks: **Sepolia**, **Holesky**, **Scroll Sepolia** (add more in `hardhat.config.cts`).
 
 ```bash
 # Set your private key for a network
-bunx hardhat vars set holesky <your_private_key>
+bunx hardhat vars set sepolia <your_private_key>
 
-# Deploy to that network
-bunx hardhat deploy --network holesky
+# Deploy the full ShieldedPool stack
+bunx hardhat run scripts/deploy-pool.ts --network sepolia
+
+# Deploy only the verifier contract
+bunx hardhat deploy --network sepolia
 ```
 
 Networks must be [supported by Wagmi](https://wagmi.sh/react/api/chains#available-chains) and configured in `hardhat.config.cts`.

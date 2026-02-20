@@ -1,7 +1,8 @@
-import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import deployment from '../../../deployment.json';
+import { createWalletClient, createPublicClient, http } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { sepolia } from 'viem/chains';
 
 const SHIELDED_POOL_ABI = [
   {
@@ -31,62 +32,147 @@ const SHIELDED_POOL_ABI = [
     ],
     outputs: [],
   },
+  {
+    type: 'function',
+    name: 'withdrawV2b',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'proof', type: 'bytes' },
+      { name: 'publicInputs', type: 'bytes32[]' },
+      { name: 'ciphertext', type: 'bytes32' },
+    ],
+    outputs: [],
+  },
 ] as const;
 
-const poolAddress = (import.meta as unknown as { env: { VITE_POOL_ADDRESS?: string } }).env
-  .VITE_POOL_ADDRESS as `0x${string}` | undefined;
+const env = (import.meta as unknown as { env: Record<string, string | undefined> }).env;
+const poolAddress = env.VITE_POOL_ADDRESS as `0x${string}` | undefined;
+const privateKey = env.VITE_PRIVATE_KEY as `0x${string}` | undefined;
+const rpcUrl = env.VITE_RPC_URL || undefined;
+
+const account = privateKey ? privateKeyToAccount(privateKey) : undefined;
+
+const walletClient = account
+  ? createWalletClient({
+      account,
+      chain: sepolia,
+      transport: http(rpcUrl),
+    })
+  : undefined;
+
+const publicClient = createPublicClient({
+  chain: sepolia,
+  transport: http(rpcUrl),
+});
 
 export function useDeposit() {
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { isConnected } = useAccount();
-  const { data: hash, writeContract, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const [isPending, setIsPending] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
-  const deposit = (commitment: `0x${string}`, amount: bigint) => {
-    if (!poolAddress) {
-      toast.error('Set VITE_POOL_ADDRESS in .env');
-      return;
-    }
-    writeContract({
-      address: poolAddress,
-      abi: SHIELDED_POOL_ABI,
-      functionName: 'deposit',
-      args: [commitment, amount],
-    });
-  };
+  const sendTx = useCallback(
+    async (fn: () => Promise<`0x${string}`>) => {
+      if (!walletClient) {
+        toast.error('Set VITE_PRIVATE_KEY in .env');
+        return;
+      }
+      setIsPending(true);
+      setIsSuccess(false);
+      setError(null);
+      try {
+        const hash = await fn();
+        const explorerUrl = `https://sepolia.etherscan.io/tx/${hash}`;
+        toast.info(
+          <span>Tx sent. <a href={explorerUrl} target="_blank" rel="noopener">View on Etherscan</a></span>,
+        );
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash,
+          timeout: 120_000,
+        });
+        if (receipt.status === 'reverted') {
+          throw new Error(`Transaction reverted (${hash})`);
+        }
+        setIsSuccess(true);
+        return hash;
+      } catch (err) {
+        const e = err instanceof Error ? err : new Error(String(err));
+        setError(e);
+        toast.error(e.message.slice(0, 200));
+      } finally {
+        setIsPending(false);
+      }
+    },
+    [],
+  );
 
-  const registerRoot = (root: `0x${string}`) => {
-    if (!poolAddress) return;
-    writeContract({
-      address: poolAddress,
-      abi: SHIELDED_POOL_ABI,
-      functionName: 'registerRoot',
-      args: [root],
-    });
-  };
+  const deposit = useCallback(
+    (commitment: `0x${string}`, amount: bigint) => {
+      if (!poolAddress || !walletClient) return;
+      return sendTx(() =>
+        walletClient.writeContract({
+          address: poolAddress,
+          abi: SHIELDED_POOL_ABI,
+          functionName: 'deposit',
+          args: [commitment, amount],
+        }),
+      );
+    },
+    [sendTx],
+  );
 
-  const withdraw = (proof: `0x${string}`, publicInputs: `0x${string}`[]) => {
-    if (!poolAddress) {
-      toast.error('Set VITE_POOL_ADDRESS in .env');
-      return;
-    }
-    writeContract({
-      address: poolAddress,
-      abi: SHIELDED_POOL_ABI,
-      functionName: 'withdraw',
-      args: [proof, publicInputs],
-    });
-  };
+  const registerRoot = useCallback(
+    (root: `0x${string}`) => {
+      if (!poolAddress || !walletClient) return;
+      return sendTx(() =>
+        walletClient.writeContract({
+          address: poolAddress,
+          abi: SHIELDED_POOL_ABI,
+          functionName: 'registerRoot',
+          args: [root],
+        }),
+      );
+    },
+    [sendTx],
+  );
+
+  const withdraw = useCallback(
+    (proof: `0x${string}`, publicInputs: `0x${string}`[]) => {
+      if (!poolAddress || !walletClient) return;
+      return sendTx(() =>
+        walletClient.writeContract({
+          address: poolAddress,
+          abi: SHIELDED_POOL_ABI,
+          functionName: 'withdraw',
+          args: [proof, publicInputs],
+        }),
+      );
+    },
+    [sendTx],
+  );
+
+  const withdrawV2b = useCallback(
+    (proof: `0x${string}`, publicInputs: `0x${string}`[], ciphertext: `0x${string}`) => {
+      if (!poolAddress || !walletClient) return;
+      return sendTx(() =>
+        walletClient.writeContract({
+          address: poolAddress,
+          abi: SHIELDED_POOL_ABI,
+          functionName: 'withdrawV2b',
+          args: [proof, publicInputs, ciphertext],
+        }),
+      );
+    },
+    [sendTx],
+  );
 
   return {
-    isConnected,
-    connect: () => connect({ connector: connectors[0], chainId: deployment.networkConfig.id }),
-    disconnect,
+    isConnected: !!account,
+    address: account?.address,
     deposit,
     registerRoot,
     withdraw,
-    isPending: isPending || isConfirming,
+    withdrawV2b,
+    isPending,
     isSuccess,
     error,
     poolAddress,
