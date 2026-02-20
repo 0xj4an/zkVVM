@@ -1,4 +1,7 @@
 # Input for commitment_helper (commitment = H(value, nullifier)).
 # Run: ./scripts/compute_commitment.sh then paste output into WithdrawProver.toml as commitment.
+#
+# To generate nullifier for your value: set value in NullifierHelperProver.toml (same value as here),
+# then run: ./scripts/compute_nullifier.sh  →  paste nullifier here and into WithdrawProver.toml.
 value = "0x1"
 nullifier = "0x2f2db3ebc29365d92b4c3c567ec37494c011331eedf2eb88972d6a5aee08d400"

@@ -9,6 +9,10 @@ cp src/main.nr "$BACKUP"
 cp src/withdraw.nr src/main.nr
 nargo compile
 mkdir -p ../contracts
-cp target/Verifier.sol ../contracts/WithdrawVerifierV2b.sol
+if [ -f target/Verifier.sol ]; then
+  sed 's/contract UltraVerifier/contract WithdrawVerifierV2b/' target/Verifier.sol > ../contracts/WithdrawVerifierV2b.sol
+else
+  echo "Warning: target/Verifier.sol not found (noirenberg may write it). Copy UltraVerifier.sol to WithdrawVerifierV2b.sol and rename the contract manually."
+fi
 mv "$BACKUP" src/main.nr
 echo "Done. ../contracts/WithdrawVerifierV2b.sol generado (v2b, 5 public inputs). Para Etapa 3.3 usar este verifier en ShieldedPool."

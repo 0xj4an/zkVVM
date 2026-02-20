@@ -11,7 +11,8 @@
     "test:up": "bun test ./tests/up.test.ts",
     "test:uh": "bun test ./tests/uh.test.ts",
     "test": "bun test:up && bun test:uh",
-    "node": "bunx hardhat node"
+    "node": "bunx hardhat node",
+    "gen-ciphertext": "bun run scripts/gen-ciphertext.ts"
   },
   "type": "module",
   "devDependencies": {

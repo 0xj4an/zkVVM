@@ -1,5 +1,6 @@
-// Withdraw circuit: prove ownership of a note and bind withdrawal to a recipient.
-// Public inputs (order for Solidity): value, nullifier, merkle_proof_length, expected_merkle_root, recipient.
+// Withdraw circuit (v2b): prove ownership of a note and bind withdrawal to a recipient.
+// Public inputs (order for Solidity): nullifier, merkle_proof_length, expected_merkle_root, recipient, commitment.
+// value is PRIVATE; commitment = H(value, nullifier) so the contract can verify the decrypted amount from ciphertext.
 // Prover: WithdrawProver.toml. Para compilar verifier: ./scripts/compile_withdraw_verifier.sh
 use binary_merkle_root::binary_merkle_root;
 use poseidon::poseidon::bn254::hash_2 as poseidon2;
@@ -11,19 +12,23 @@ fn compute_entry(value: Field, holder: Field, random: Field, nullifier: Field) -
 }
 
 fn main(
-    // Public inputs (must match Solidity contract order)
-    value: pub Field,
+    // Public inputs (must match Solidity contract order); no value in clear
     nullifier: pub Field,
     merkle_proof_length: pub u32,
     expected_merkle_root: pub Field,
     recipient: pub Field,
+    commitment: pub Field,
 
-    // Private inputs (pk_b = recipient id, same as deposit_one: B=2, C=3)
+    // Private inputs
+    value: Field,
     pk_b: Field,
     random: Field,
     merkle_proof_indices: [u1; MAX_DEPTH],
     merkle_proof_siblings: [Field; MAX_DEPTH],
 ) {
+    // 0. Commitment binds value to this nullifier (for contract to verify ciphertext)
+    assert(commitment == poseidon2([value, nullifier]));
+
     // 1. Verify nullifier is correctly derived (proves ownership of the note)
     assert(nullifier == poseidon2([random, pk_b]));
 

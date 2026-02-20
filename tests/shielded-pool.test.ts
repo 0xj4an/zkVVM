@@ -5,6 +5,11 @@ import { UltraPlonkBackend } from '@aztec/bb.js';
 import fs from 'fs';
 import { resolve } from 'path';
 import { bytesToHex, keccak256, toBytes } from 'viem';
+import {
+  computeCiphertext,
+  decryptCiphertext,
+  POOL_SALT,
+} from '../lib/withdraw-v2b-ciphertext.js';
 
 const GENESIS_ROOT = '0x0000000000000000000000000000000000000000000000000000000000000001' as const;
 
@@ -295,6 +300,38 @@ describe('ShieldedPool (Etapa 2)', () => {
       expect(withdrawLog).toBeDefined();
       const recipientFromTopic = ('0x' + (withdrawLog!.topics[1]!.slice(-40))).toLowerCase();
       expect(recipientFromTopic).toBe(bobAddress.toLowerCase());
+    });
+  });
+
+  describe('3.4 withdraw v2b: ciphertext off-chain', () => {
+    const nullifier = '0x2f2db3ebc29365d92b4c3c567ec37494c011331eedf2eb88972d6a5aee08d400' as `0x${string}`;
+    const recipientField =
+      '0x000000000000000000000000635bb386312470490dd5864258bcb7ab505bf42d' as `0x${string}`;
+
+    test('POOL_SALT es bytes32', () => {
+      expect(POOL_SALT).toMatch(/^0x[0-9a-f]{64}$/i);
+    });
+
+    test('computeCiphertext + decryptCiphertext round-trip', () => {
+      const amount = 1n;
+      const ciphertext = computeCiphertext(amount, nullifier, recipientField);
+      expect(ciphertext).toMatch(/^0x[0-9a-f]{64}$/i);
+      const recovered = decryptCiphertext(ciphertext, nullifier, recipientField);
+      expect(recovered).toBe(amount);
+    });
+
+    test('ciphertext distinto para distinto amount', () => {
+      const c1 = computeCiphertext(1n, nullifier, recipientField);
+      const c2 = computeCiphertext(2n, nullifier, recipientField);
+      expect(c1).not.toBe(c2);
+      expect(decryptCiphertext(c1, nullifier, recipientField)).toBe(1n);
+      expect(decryptCiphertext(c2, nullifier, recipientField)).toBe(2n);
+    });
+
+    test('ciphertext con amount grande (1e18)', () => {
+      const amount = 10n ** 18n;
+      const ciphertext = computeCiphertext(amount, nullifier, recipientField);
+      expect(decryptCiphertext(ciphertext, nullifier, recipientField)).toBe(amount);
     });
   });
 });

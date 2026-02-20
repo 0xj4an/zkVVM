@@ -1,6 +1,12 @@
-# Flujo Prover – Montos variables (v2a)
+# Flujo Prover – Montos variables (v2a) y withdraw v2b
 
-## WithdrawProver.toml
+## WithdrawProver.toml (v2b)
+
+- **value** no va como public input: es **private input**. Los public inputs son 5: `nullifier`, `merkle_proof_length`, `expected_merkle_root`, `recipient`, `commitment`.
+- **commitment** = H(value, nullifier); usar `./scripts/compute_commitment.sh` o el commitment_helper para obtenerlo.
+- Para la proof: rellenar los 5 públicos y los privados (value, pk_b, random, merkle_proof_*). El contrato usa `withdrawV2b(proof, publicInputs, ciphertext)`; el ciphertext se genera off-chain con la misma clave que el contrato (ver `lib/withdraw-v2b-ciphertext.ts` y `bun run gen-ciphertext`).
+
+## WithdrawProver.toml (v2a – value público)
 
 - **value** es configurable: es el monto a retirar (mismo orden que el circuito).
 - Cambia `value` al monto deseado (ej. `"0x1"` para 1 unidad, `"0xde0b6b3a7640000"` para 1e18).
