@@ -1,0 +1,33 @@
+# Split circuit: 7 public inputs (nullifier_in, merkle_proof_length, expected_merkle_root, commitment_1..4).
+# Copy split.nr to main.nr and run nargo compile / noirenberg to build the verifier.
+# See docs/circuito-split-detalle.md for full spec.
+
+# Public (order for Solidity)
+nullifier_in = ""
+merkle_proof_length = 1
+expected_merkle_root = ""
+commitment_1 = ""
+commitment_2 = ""
+commitment_3 = ""
+commitment_4 = ""
+
+# Private: spent note
+value_in = ""
+pk_sender = ""
+random_in = ""
+merkle_proof_indices = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+merkle_proof_siblings = ["0x0", "0x0", "0x0", "0x0", "0x0", "0x0", "0x0", "0x0", "0x0", "0x0"]
+
+# Private: 4 output notes (value_i, pk_i, random_i)
+value_1 = ""
+pk_1 = ""
+random_1 = ""
+value_2 = ""
+pk_2 = ""
+random_2 = ""
+value_3 = ""
+pk_3 = ""
+random_3 = ""
+value_4 = ""
+pk_4 = ""
+random_4 = ""
