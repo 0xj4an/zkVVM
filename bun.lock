@@ -16,6 +16,7 @@
         "@nomicfoundation/hardhat-toolbox-viem": "3.0.0",
         "@nomicfoundation/hardhat-verify": "^2.0.8",
         "@nomicfoundation/hardhat-viem": "2.0.2",
+        "@openzeppelin/contracts": "^5.4.0",
         "@types/mocha": "^10.0.1",
         "@types/shelljs": "^0.8.7",
         "commander": "^12.1.0",
@@ -425,6 +426,8 @@
     "@nomicfoundation/solidity-analyzer-linux-x64-musl": ["@nomicfoundation/solidity-analyzer-linux-x64-musl@0.1.2", "", {}, "sha512-GzzVeeJob3lfrSlDKQw2bRJ8rBf6mEYaWY+gW0JnTDHINA0s2gPR4km5RLIj1xeZZOYz4zRw+AEeYgLRqB2NXg=="],
 
     "@nomicfoundation/solidity-analyzer-win32-x64-msvc": ["@nomicfoundation/solidity-analyzer-win32-x64-msvc@0.1.2", "", {}, "sha512-Fdjli4DCcFHb4Zgsz0uEJXZ2K7VEO+w5KVv7HmT7WO10iODdU9csC2az4jrhEsRtiR9Gfd74FlG0NYlw1BMdyA=="],
+
+    "@openzeppelin/contracts": ["@openzeppelin/contracts@5.4.0", "", {}, "sha512-eCYgWnLg6WO+X52I16TZt8uEjbtdkgLC0SUX/xnAksjjrQI4Xfn4iBRoI5j55dmlOhDv1Y7BoR3cU7e3WWhC6A=="],
 
     "@react-native/assets-registry": ["@react-native/assets-registry@0.84.0", "", {}, "sha512-YiU9h1IN0pvvZsHbd03MaD7mE2q+ySaKMlE9tWK+3iiwtbEaMQOsMUuSJ1er2LU6ERMWfhfvCYgWpKRGOMeN8A=="],
 

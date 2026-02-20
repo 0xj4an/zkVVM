@@ -1,0 +1,5 @@
+# Input for nullifier_helper (src/nullifier_helper.nr).
+# Set value = amount for the note; then run the helper to get (nullifier, expected_merkle_root)
+# and paste those into WithdrawProver.toml.
+# Example: 1 unit = "0x1", 1e18 = "0xde0b6b3a7640000"
+value = "0x1"

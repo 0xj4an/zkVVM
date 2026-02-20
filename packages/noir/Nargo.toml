@@ -2,11 +2,8 @@
 name = "noirstarter"
 type = "bin"
 
-# Dependencias deshabilitadas temporalmente: el circuito main.nr no las usa
-# y keccak256 falla al compilar con hardhat-noirenberg (mod tests + keccakf1600 privado).
-# Descomenta cuando las necesites y asegúrate de que la versión sea compatible.
-# [dependencies]
+[dependencies]
 binary_merkle_root = { git = "https://github.com/privacy-scaling-explorations/zk-kit.noir", tag = "binary-merkle-root-v0.0.1", directory = "packages/binary-merkle-root" }
-ec = { git = "https://github.com/noir-lang/noir-edwards", tag = "v0.2.5"}
+ec = { git = "https://github.com/noir-lang/noir-edwards", tag = "v0.2.5" }
 poseidon = { tag = "v0.1.1", git = "https://github.com/noir-lang/poseidon" }
-keccak256 = { tag = "v0.1.0", git = "https://github.com/noir-lang/keccak256" }
+# keccak256 omitido: falla con hardhat-noirenberg (mod tests + keccakf1600 privado). Añadir solo si el circuito lo usa.

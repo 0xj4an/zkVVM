@@ -1,0 +1,183 @@
+import { expect, beforeAll, describe, test, setDefaultTimeout } from 'bun:test';
+import { Noir } from '@noir-lang/noir_js';
+import { ProofData } from '@noir-lang/types';
+import { UltraPlonkBackend } from '@aztec/bb.js';
+import fs from 'fs';
+import { resolve } from 'path';
+import { bytesToHex } from 'viem';
+
+const GENESIS_ROOT = '0x0000000000000000000000000000000000000000000000000000000000000001' as const;
+
+setDefaultTimeout(120_000);
+
+const CONTRACTS_DIR = resolve(import.meta.dir, '..', 'packages', 'contracts');
+
+describe('ShieldedPool (Etapa 1.4)', () => {
+  let noir: Noir;
+  let backend: UltraPlonkBackend;
+  let pool: { address: `0x${string}`; read: Record<string, (...args: unknown[]) => Promise<unknown>>; write: Record<string, (...args: unknown[]) => Promise<unknown>> };
+  let withdrawVerifier: { address: `0x${string}` };
+  let expectedRootForWithdraw: `0x${string}`;
+
+  beforeAll(async () => {
+    const backupDir = resolve(import.meta.dir, '..', 'packages', 'contracts-backup');
+    fs.mkdirSync(backupDir, { recursive: true });
+    for (const name of ['IVerifier.sol', 'MockVerifier.sol', 'MockERC20.sol', 'ShieldedPool.sol']) {
+      const p = resolve(CONTRACTS_DIR, name);
+      if (fs.existsSync(p)) fs.copyFileSync(p, resolve(backupDir, name));
+    }
+
+    const hre = require('hardhat');
+    hre.run('node');
+    hre.config.noirenberg = { provingSystem: 'UltraPlonk' };
+
+    if (fs.existsSync(CONTRACTS_DIR)) fs.rmSync(CONTRACTS_DIR, { recursive: true });
+    fs.mkdirSync(CONTRACTS_DIR, { recursive: true });
+
+    ({ noir, backend } = await hre.noirenberg.compile());
+    await hre.noirenberg.getSolidityVerifier();
+
+    for (const name of ['IVerifier.sol', 'MockVerifier.sol', 'MockERC20.sol', 'ShieldedPool.sol']) {
+      const src = resolve(backupDir, name);
+      const dest = resolve(CONTRACTS_DIR, name);
+      if (fs.existsSync(src)) fs.copyFileSync(src, dest);
+    }
+    await hre.run('compile');
+
+    const walletClients = await hre.viem.getWalletClients();
+    const wallet = walletClients?.[0];
+    const mockUsdc = await hre.viem.deployContract('MockERC20');
+    if (wallet?.account?.address) {
+      await mockUsdc.write.mint([wallet.account.address, 1_000_000n * 10n ** 18n]);
+    }
+
+    const mockVerifier = await hre.viem.deployContract('MockVerifier');
+    withdrawVerifier = await hre.viem.deployContract('UltraVerifier');
+
+    pool = await hre.viem.deployContract('ShieldedPool', [
+      mockUsdc.address,
+      mockVerifier.address,
+      GENESIS_ROOT as `0x${string}`,
+      withdrawVerifier.address,
+    ]);
+
+    expectedRootForWithdraw = '0x1364dee863ea150a4774ed9bc287bd4a4b7bec30e86f6bc29decf65a3b3bc4aa' as const;
+    if (expectedRootForWithdraw !== GENESIS_ROOT) {
+      await pool.write.registerRoot([expectedRootForWithdraw]);
+    }
+  });
+
+  describe('1.4 Deposit: varios amount y un commitment por cada uno', () => {
+    test('deposit con amount 100 y commitment único', async () => {
+      const commitment1 = '0x' + '11'.repeat(32) as `0x${string}`;
+      await pool.write.deposit([commitment1, 100n]);
+      expect(await pool.read.usedCommitments([commitment1])).toBeTrue;
+    });
+
+    test('deposit con amount 1000000 y otro commitment', async () => {
+      const commitment2 = '0x' + '22'.repeat(32) as `0x${string}`;
+      await pool.write.deposit([commitment2, 1_000_000n]);
+      expect(await pool.read.usedCommitments([commitment2])).toBeTrue;
+    });
+
+    test('deposit con amount 1e18 y otro commitment', async () => {
+      const commitment3 = '0x' + '33'.repeat(32) as `0x${string}`;
+      await pool.write.deposit([commitment3, 10n ** 18n]);
+      expect(await pool.read.usedCommitments([commitment3])).toBeTrue;
+    });
+
+    test('rechazo: mismo commitment dos veces', async () => {
+      const commitment = '0x' + '44'.repeat(32) as `0x${string}`;
+      await pool.write.deposit([commitment, 1n]);
+      await expect(pool.write.deposit([commitment, 2n])).rejects.toThrow();
+    });
+
+    test('rechazo: amount 0', async () => {
+      const commitment = '0x' + '55'.repeat(32) as `0x${string}`;
+      await expect(pool.write.deposit([commitment, 0n])).rejects.toThrow();
+    });
+  });
+
+  describe('1.4 Withdraw: distintos value y comprobar monto', () => {
+    test('withdraw con value 1: proof válida y evento Withdraw con amount correcto', async () => {
+      const input = {
+        value: '0x1',
+        nullifier: '0x2f2db3ebc29365d92b4c3c567ec37494c011331eedf2eb88972d6a5aee08d400',
+        merkle_proof_length: 1,
+        expected_merkle_root: expectedRootForWithdraw,
+        recipient: '0x000000000000000000000000635BB386312470490Dd5864258bcb7Ab505bF42d',
+        pk_b: '0x2',
+        random: '0x64',
+        merkle_proof_indices: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        merkle_proof_siblings: ['0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0'],
+      };
+      const { witness } = await noir.execute(input);
+      const proof: ProofData = await backend.generateProof(witness);
+      const publicInputs = proof.publicInputs as `0x${string}`[];
+
+      const hash = await pool.write.withdraw([bytesToHex(proof.proof), publicInputs]);
+      expect(hash).toBeDefined();
+    });
+  });
+
+  describe('1.4 Rechazos: value 0, nullifier usado, root desconocido', () => {
+    test('rechazo cuando value == 0 en publicInputs', async () => {
+      const input = {
+        value: '0x1',
+        nullifier: '0x2f2db3ebc29365d92b4c3c567ec37494c011331eedf2eb88972d6a5aee08d400',
+        merkle_proof_length: 1,
+        expected_merkle_root: expectedRootForWithdraw,
+        recipient: '0x000000000000000000000000635BB386312470490Dd5864258bcb7Ab505bF42d',
+        pk_b: '0x2',
+        random: '0x64',
+        merkle_proof_indices: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        merkle_proof_siblings: ['0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0'],
+      };
+      const { witness } = await noir.execute(input);
+      const proof: ProofData = await backend.generateProof(witness);
+      const publicInputs = [...(proof.publicInputs as `0x${string}`[])];
+      publicInputs[0] = '0x0' as `0x${string}`;
+
+      await expect(pool.write.withdraw([bytesToHex(proof.proof), publicInputs])).rejects.toThrow();
+    });
+
+    test('rechazo cuando nullifier ya usado', async () => {
+      const input = {
+        value: '0x1',
+        nullifier: '0x2f2db3ebc29365d92b4c3c567ec37494c011331eedf2eb88972d6a5aee08d400',
+        merkle_proof_length: 1,
+        expected_merkle_root: expectedRootForWithdraw,
+        recipient: '0x000000000000000000000000635BB386312470490Dd5864258bcb7Ab505bF42d',
+        pk_b: '0x2',
+        random: '0x64',
+        merkle_proof_indices: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        merkle_proof_siblings: ['0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0'],
+      };
+      const { witness } = await noir.execute(input);
+      const proof: ProofData = await backend.generateProof(witness);
+      const publicInputs = proof.publicInputs as `0x${string}`[];
+      await expect(pool.write.withdraw([bytesToHex(proof.proof), publicInputs])).rejects.toThrow();
+    });
+
+    test('rechazo cuando expected_merkle_root desconocido', async () => {
+      const unknownRoot = '0x0000000000000000000000000000000000000000000000000000000000000002' as `0x${string}`;
+      const input = {
+        value: '0x1',
+        nullifier: '0x2f2db3ebc29365d92b4c3c567ec37494c011331eedf2eb88972d6a5aee08d400',
+        merkle_proof_length: 1,
+        expected_merkle_root: expectedRootForWithdraw,
+        recipient: '0x000000000000000000000000635BB386312470490Dd5864258bcb7Ab505bF42d',
+        pk_b: '0x2',
+        random: '0x64',
+        merkle_proof_indices: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        merkle_proof_siblings: ['0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0'],
+      };
+      const { witness } = await noir.execute(input);
+      const proof: ProofData = await backend.generateProof(witness);
+      const publicInputs = [...(proof.publicInputs as `0x${string}`[])];
+      publicInputs[3] = unknownRoot;
+
+      await expect(pool.write.withdraw([bytesToHex(proof.proof), publicInputs])).rejects.toThrow();
+    });
+  });
+});

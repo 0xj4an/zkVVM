@@ -1,2 +1,9 @@
-x = 1
-y = 2
+expected_merkle_root = ""
+merkle_proof_indices = ["", "", "", "", "", "", "", "", "", ""]
+merkle_proof_length = ""
+merkle_proof_siblings = ["", "", "", "", "", "", "", "", "", ""]
+nullifier = ""
+pk_b = ""
+random = ""
+recipient = ""
+value = ""

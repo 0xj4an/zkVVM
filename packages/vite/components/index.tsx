@@ -4,6 +4,7 @@ import React from 'react';
 import { useOnChainVerification } from '../hooks/useOnChainVerification.js';
 import { useProofGeneration } from '../hooks/useProofGeneration.js';
 import { useOffChainVerification } from '../hooks/useOffChainVerification.js';
+import { DepositTest } from './DepositTest.jsx';
 
 function Component() {
   const [input, setInput] = useState<{ x: string; y: string } | undefined>();
@@ -33,6 +34,7 @@ function Component() {
         <button type="submit">Calculate proof</button>
       </form>
       {verifyButton}
+      <DepositTest />
     </>
   );
 }
