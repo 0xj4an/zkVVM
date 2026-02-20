@@ -1,7 +1,7 @@
 import '@nomicfoundation/hardhat-toolbox-viem';
 import '@nomicfoundation/hardhat-viem';
 import '@nomicfoundation/hardhat-chai-matchers';
-import 'hardhat-noirenberg';
+// import 'hardhat-noirenberg';
 
 import { writeFileSync } from 'fs';
 import { Chain } from 'viem';
@@ -51,7 +51,7 @@ task('deploy', 'Deploys a verifier contract')
     const contractsDir = resolve('packages', 'contracts');
     // if (fs.existsSync(contractsDir)) fs.rmdirSync(contractsDir, { recursive: true });
 
-    hre.config.noirenberg = { provingSystem: taskArgs.provingSystem || 'UltraPlonk' };
+    // hre.config.noirenberg = { provingSystem: taskArgs.provingSystem || 'UltraPlonk' };
     await hre.run('compile');
 
     let verifier;

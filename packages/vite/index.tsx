@@ -1,11 +1,20 @@
-// @ts-ignore
-import acvm from '@noir-lang/acvm_js/web/acvm_js_bg.wasm?url';
-// @ts-ignore
-import noirc from '@noir-lang/noirc_abi/web/noirc_abi_wasm_bg.wasm?url';
 import initNoirC from '@noir-lang/noirc_abi';
 import initACVM from '@noir-lang/acvm_js';
-// @ts-ignore
-await Promise.all([initACVM(fetch(acvm)), initNoirC(fetch(noirc))]);
+
+try {
+  // @ts-ignore
+  const acvmUrl = new URL('@noir-lang/acvm_js/web/acvm_js_bg.wasm?url', import.meta.url).href;
+  // @ts-ignore
+  const noircUrl = new URL('@noir-lang/noirc_abi/web/noirc_abi_wasm_bg.wasm?url', import.meta.url).href;
+
+  await Promise.all([
+    initACVM(fetch(acvmUrl)),
+    initNoirC(fetch(noircUrl))
+  ]);
+  console.log('Noir WASM initialized successfully');
+} catch (e) {
+  console.error('Failed to initialize Noir WASM:', e);
+}
 
 import React, { ReactNode, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';

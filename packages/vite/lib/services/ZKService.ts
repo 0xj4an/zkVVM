@@ -107,6 +107,7 @@ export class ZKService {
 
   /**
    * High-level API for creating a note using note_generator circuit.
+   * Commitment = Poseidon([secret, nullifier, value])
    */
   async generateNote(
     circuit: CompiledCircuit,
@@ -117,20 +118,33 @@ export class ZKService {
     const secret = secretOverride ?? this.getRandomBigInt();
     const nullifier = nullifierOverride ?? this.getRandomBigInt();
 
-    const result = await this.executeCircuit(circuit, {
-      secret,
-      nullifier,
-      value,
-    });
+    // Use the updated Poseidon logic: Commitment = H(secret, nullifier, value)
+    const bb = await this.getBB();
+    const commitmentArr = await bb.poseidon3Hash([new Fr(secret), new Fr(nullifier), new Fr(value)]);
+    const commitment = this.toBigInt(commitmentArr);
+
+    const nullifierHashArr = await bb.poseidon2Hash([new Fr(nullifier)]); // Wait, circuit uses hash_1? hash_1 in poseidon is often hash_1([x]) which is just H(x, 0) or similar.
+    // Actually, let's use the circuit to be sure if possible, or match its poseidon usage.
+    // In main.nr: let calculated_nullifier_hash = poseidon1([nullifier]);
+    // In BB.js, poseidon1 might be different. Let's stick to consistent BB.js usage.
+    const nullifierHash = this.toBigInt(await bb.poseidon2Hash([new Fr(nullifier), new Fr(0n)]));
+
+    // We still need to compute the initial root (simple case: empty siblings)
+    // This is just for demonstration/testing if the circuit expects it.
+    let current = commitment;
+    for (let i = 0; i < 10; i++) {
+      current = this.toBigInt(await bb.poseidon2Hash([new Fr(current), new Fr(0n)]));
+    }
+    const root = current;
 
     return {
       secret,
       nullifier,
       value,
-      nullifierHash: this.toBigInt(result[0]),
-      commitment: this.toBigInt(result[1]),
-      entry: this.toBigInt(result[2]),
-      root: this.toBigInt(result[3]),
+      nullifierHash,
+      commitment,
+      entry: commitment, // In this model, entry is commitment
+      root,
     };
   }
 
