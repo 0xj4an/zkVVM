@@ -1,5 +1,5 @@
-use poseidon::poseidon::bn254::hash_2 as poseidon2;
+use poseidon::poseidon::bn254::hash_1 as poseidon1;
 
-fn main(random: Field, pk_b: Field) -> pub Field {
-    poseidon2([random, pk_b])
+fn main(nullifier: Field) -> pub Field {
+    poseidon1([nullifier])
 }

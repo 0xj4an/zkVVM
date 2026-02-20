@@ -17,34 +17,34 @@ describe("zkVVM Circuit Tests (UltraPlonk)", () => {
     };
 
     // Helper wrappers
-    const getNullifier = async (random: bigint, pk_b: bigint): Promise<bigint> => {
+    const getNullifierHash = async (nullifier: bigint): Promise<bigint> => {
         const noir = new Noir(nullifierHelperArtifact as any);
-        const { returnValue } = await noir.execute({ random: toHex(random), pk_b: toHex(pk_b) });
+        const { returnValue } = await noir.execute({ nullifier: toHex(nullifier) });
         return toBigInt(returnValue);
     };
 
-    const getCommitment = async (value: bigint, nullifier: bigint): Promise<bigint> => {
+    const getCommitment = async (secret: bigint, nullifier: bigint, value: bigint): Promise<bigint> => {
         const noir = new Noir(commitmentHelperArtifact as any);
-        const { returnValue } = await noir.execute({ value: toHex(value), nullifier: toHex(nullifier) });
+        const { returnValue } = await noir.execute({
+            secret: toHex(secret),
+            nullifier: toHex(nullifier),
+            value: toHex(value)
+        });
         return toBigInt(returnValue);
     };
 
     const getRoot = async (
-        value: bigint,
-        from: bigint,
-        random: bigint,
+        secret: bigint,
         nullifier: bigint,
-        depth: number,
+        value: bigint,
         indices: number[],
         siblings: bigint[]
     ): Promise<bigint> => {
         const noir = new Noir(rootHelperArtifact as any);
         const { returnValue } = await noir.execute({
+            secret: toHex(secret),
+            nullifier: toHex(nullifier),
             value: toHex(value),
-            from: toHex(from),
-            random: toHex(random),
-            nullifier_in: toHex(nullifier),
-            merkle_proof_length: depth,
             merkle_proof_indices: indices,
             merkle_proof_siblings: siblings.map(toHex),
         });
@@ -54,55 +54,51 @@ describe("zkVVM Circuit Tests (UltraPlonk)", () => {
     test("Note Generator Circuit", async () => {
         const noir = new Noir(noteGeneratorArtifact as any);
         const inputs = {
+            secret: 0xabc123n,
+            nullifier: 0xdef456n,
             value: 100n,
-            pk_b: 0x123n,
-            random: 0xabc123n,
         };
 
         const { returnValue } = await noir.execute({
+            secret: toHex(inputs.secret),
+            nullifier: toHex(inputs.nullifier),
             value: toHex(inputs.value),
-            pk_b: toHex(inputs.pk_b),
-            random: toHex(inputs.random),
         });
         const result = returnValue as any[];
 
-        const expectedNullifier = await getNullifier(inputs.random, inputs.pk_b);
-        const expectedCommitment = await getCommitment(inputs.value, expectedNullifier);
-        // Entry and Root are more complex, but we can verify Nullifier and Commitment first
-        // In note_generator.nr, entry is H(H(v, pk), H(r, n)) and root is H(entry, 0)
+        const expectedNullifierHash = await getNullifierHash(inputs.nullifier);
+        const expectedCommitment = await getCommitment(inputs.secret, inputs.nullifier, inputs.value);
 
-        expect(toBigInt(result[0])).toBe(expectedNullifier);
+        expect(toBigInt(result[0])).toBe(expectedNullifierHash);
         expect(toBigInt(result[1])).toBe(expectedCommitment);
     });
 
     test("Withdraw Circuit - Valid Proof", async () => {
         const noir = new Noir(withdrawArtifact as any);
 
+        const secret = 0xabc123n;
+        const nullifier = 0xdef456n;
         const value = 500n;
-        const pk_b = 0x456n;
-        const random = 0xdef456n;
         const recipient = 0x789n;
 
-        const nullifier = await getNullifier(random, pk_b);
-        const commitment = await getCommitment(value, nullifier);
+        const nullifierHash = await getNullifierHash(nullifier);
+        const commitment = await getCommitment(secret, nullifier, value);
 
         const depth = 10;
         const siblings = new Array(depth).fill(0n);
         const indices = new Array(depth).fill(0);
 
-        const root = await getRoot(value, pk_b, random, nullifier, depth, indices, siblings);
+        const root = await getRoot(secret, nullifier, value, indices, siblings);
 
         const inputs = {
-            nullifier: toHex(nullifier),
-            merkle_proof_length: depth,
-            expected_merkle_root: toHex(root),
+            root: toHex(root),
+            nullifierHash: toHex(nullifierHash),
             recipient: toHex(recipient),
-            commitment: toHex(commitment),
             value: toHex(value),
-            pk_b: toHex(pk_b),
-            random: toHex(random),
-            merkle_proof_indices: indices,
-            merkle_proof_siblings: siblings.map(toHex),
+            secret: toHex(secret),
+            nullifier: toHex(nullifier),
+            path_indices: indices,
+            path_siblings: siblings.map(toHex),
         };
 
         const { witness } = await noir.execute(inputs as any);
@@ -112,30 +108,28 @@ describe("zkVVM Circuit Tests (UltraPlonk)", () => {
     test("Withdraw Circuit - Invalid Commitment", async () => {
         const noir = new Noir(withdrawArtifact as any);
 
+        const secret = 0xabc123n;
+        const nullifier = 0xdef456n;
         const value = 500n;
-        const pk_b = 0x456n;
-        const random = 0xdef456n;
         const recipient = 0x789n;
 
-        const nullifier = await getNullifier(random, pk_b);
+        const nullifierHash = await getNullifierHash(nullifier);
         const commitment = 0xdeadbeefn; // Wrong
 
         const depth = 10;
         const siblings = new Array(depth).fill(0n);
         const indices = new Array(depth).fill(0);
-        const root = await getRoot(value, pk_b, random, nullifier, depth, indices, siblings);
+        const root = await getRoot(secret, nullifier, value, indices, siblings); // Valid root for secret/nullifier/value
 
         const inputs = {
-            nullifier: toHex(nullifier),
-            merkle_proof_length: depth,
-            expected_merkle_root: toHex(root),
+            root: toHex(root),
+            nullifierHash: toHex(nullifierHash),
             recipient: toHex(recipient),
-            commitment: toHex(commitment),
             value: toHex(value),
-            pk_b: toHex(pk_b),
-            random: toHex(random),
-            merkle_proof_indices: indices,
-            merkle_proof_siblings: siblings.map(toHex),
+            secret: toHex(0xdeadn), // Wrong secret
+            nullifier: toHex(nullifier),
+            path_indices: indices,
+            path_siblings: siblings.map(toHex),
         };
 
         expect(noir.execute(inputs as any)).rejects.toThrow();

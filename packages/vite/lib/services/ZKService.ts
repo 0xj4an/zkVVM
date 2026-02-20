@@ -3,11 +3,11 @@ import { Noir } from '@noir-lang/noir_js';
 import { CompiledCircuit } from '@noir-lang/types';
 
 export interface Note {
-  value: bigint;
-  pk_b: bigint;
-  random: bigint;
+  secret: bigint;
   nullifier: bigint;
+  value: bigint;
   commitment: bigint;
+  nullifierHash: bigint;
   entry: bigint;
   root: bigint;
 }
@@ -92,41 +92,42 @@ export class ZKService {
     return inputs;
   }
 
+  private getRandomBigInt(): bigint {
+    const randomBytes = new Uint8Array(32);
+    if (typeof window !== 'undefined' && window.crypto) {
+      window.crypto.getRandomValues(randomBytes);
+    } else {
+      for (let i = 0; i < 32; i++) randomBytes[i] = Math.floor(Math.random() * 256);
+    }
+    return (
+      this.bytesToBigIntBE(randomBytes) %
+      21888242871839275222246405745257275088548364400416034343698204186575808495617n
+    );
+  }
+
   /**
    * High-level API for creating a note using note_generator circuit.
    */
   async generateNote(
     circuit: CompiledCircuit,
     value: bigint,
-    recipient: string,
-    randomOverride?: bigint,
+    secretOverride?: bigint,
+    nullifierOverride?: bigint,
   ): Promise<Note> {
-    const pk_b = BigInt(recipient);
-    let random = randomOverride;
-
-    if (random === undefined) {
-      const randomBytes = new Uint8Array(32);
-      if (typeof window !== 'undefined' && window.crypto) {
-        window.crypto.getRandomValues(randomBytes);
-      } else {
-        for (let i = 0; i < 32; i++) randomBytes[i] = Math.floor(Math.random() * 256);
-      }
-      random =
-        this.bytesToBigIntBE(randomBytes) %
-        21888242871839275222246405745257275088548364400416034343698204186575808495617n;
-    }
+    const secret = secretOverride ?? this.getRandomBigInt();
+    const nullifier = nullifierOverride ?? this.getRandomBigInt();
 
     const result = await this.executeCircuit(circuit, {
+      secret,
+      nullifier,
       value,
-      pk_b,
-      random,
     });
 
     return {
+      secret,
+      nullifier,
       value,
-      pk_b,
-      random: random!,
-      nullifier: this.toBigInt(result[0]),
+      nullifierHash: this.toBigInt(result[0]),
       commitment: this.toBigInt(result[1]),
       entry: this.toBigInt(result[2]),
       root: this.toBigInt(result[3]),
@@ -144,16 +145,14 @@ export class ZKService {
     merkleProof: { indices: number[]; siblings: bigint[] },
   ) {
     const inputs = {
-      nullifier: note.nullifier,
-      merkle_proof_length: merkleProof.indices.length,
-      expected_merkle_root: merkleRoot,
+      root: merkleRoot,
+      nullifierHash: note.nullifierHash,
       recipient: recipient,
-      commitment: note.commitment,
       value: note.value,
-      pk_b: note.pk_b,
-      random: note.random,
-      merkle_proof_indices: merkleProof.indices,
-      merkle_proof_siblings: merkleProof.siblings,
+      secret: note.secret,
+      nullifier: note.nullifier,
+      path_indices: merkleProof.indices,
+      path_siblings: merkleProof.siblings,
     };
 
     const noir = new Noir(circuit);
