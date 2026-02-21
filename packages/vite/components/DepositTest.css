@@ -1,0 +1,95 @@
+/* Scoped styles for the debug/DepositTest page */
+.debug-page {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 120px 20px 48px;
+}
+
+.debug-page .card {
+  background: rgba(20, 24, 28, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(16px);
+}
+
+.debug-page .card h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent-color);
+}
+
+.debug-page .card .description {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin: 0 0 16px 0;
+}
+
+.debug-page .input-group {
+  margin-bottom: 12px;
+}
+
+.debug-page .input-group label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.debug-page input[type="text"],
+.debug-page input[type="number"] {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.debug-page input[type="text"]:focus,
+.debug-page input[type="number"]:focus {
+  border-color: var(--accent-color);
+}
+
+.debug-page .units-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.debug-page .btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.debug-page .status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 12px;
+}
+
+.debug-page .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  flex-shrink: 0;
+}

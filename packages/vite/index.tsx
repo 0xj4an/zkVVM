@@ -7,17 +7,23 @@ import initACVM from '@noir-lang/acvm_js';
 // @ts-ignore
 await Promise.all([initACVM(fetch(acvm)), initNoirC(fetch(noirc))]);
 
-import React, { ReactNode, useEffect } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './App.css';
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from 'react-toastify';
-import Component from './components/index.jsx';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { createClient } from 'viem';
 import { sepolia } from 'viem/chains';
 import { injected } from 'wagmi/connectors';
+
+import { Layout } from './components/Layout.jsx';
+import { LandingPage } from './pages/LandingPage.jsx';
+import { DashboardPage } from './pages/DashboardPage.jsx';
+import { WithdrawPage } from './pages/WithdrawPage.jsx';
+import { DepositTest } from './components/DepositTest.jsx';
 
 const queryClient = new QueryClient();
 
@@ -41,7 +47,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <Providers>
-    <Component />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<LandingPage />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="withdraw" element={<WithdrawPage />} />
+          <Route path="debug" element={<div className="debug-page"><DepositTest /></div>} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
     <ToastContainer />
   </Providers>,
 );

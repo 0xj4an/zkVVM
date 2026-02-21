@@ -1,0 +1,66 @@
+.withdraw-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.withdraw-card {
+    width: 100%;
+    max-width: 600px;
+    background: rgba(10, 12, 14, 0.8);
+}
+
+.withdraw-header {
+    margin-bottom: 32px;
+}
+
+.withdraw-header h2 {
+    font-size: 24px;
+    margin: 0 0 8px 0;
+}
+
+.withdraw-header p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin: 0;
+}
+
+.full-width {
+    margin-bottom: 24px;
+}
+
+.proof-logic-box {
+    background: rgba(0, 255, 170, 0.05);
+    border: 1px solid rgba(0, 255, 170, 0.15);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 32px 0;
+}
+
+.proof-logic-header {
+    color: #00ffaa;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.proof-icon {
+    font-size: 14px;
+}
+
+.proof-logic-list {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 2;
+}
+
+.proof-logic-list li::marker {
+    color: #00ffaa;
+    font-size: 1.2em;
+}
