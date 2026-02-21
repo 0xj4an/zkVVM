@@ -1,13 +1,19 @@
 {
-  "name": "vite-hardhat",
-  "description": "A template repository to get started with writing zero knowledge programs with Noir.",
+  "name": "zkvvm",
+  "description": "Zero-Knowledge Virtual Machine - Privacy-preserving shielded pool with ZK proofs",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "apps/*",
+    "contracts",
+    "circuits",
+    "shared"
   ],
   "scripts": {
     "deploy": "bunx hardhat deploy",
-    "dev": "bun --filter vite dev",
+    "dev": "bun --cwd apps/frontend dev",
+    "dev:frontend": "bun --cwd apps/frontend dev",
+    "build:frontend": "bun --cwd apps/frontend run vite build",
+    "build:circuits": "bun --cwd circuits run compile.ts",
     "test:up": "bun test ./tests/up.test.ts",
     "test:uh": "bun test ./tests/uh.test.ts",
     "test": "bun test:up && bun test:uh",

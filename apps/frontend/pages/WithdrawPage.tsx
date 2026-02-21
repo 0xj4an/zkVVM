@@ -6,7 +6,7 @@ import { WalletGuard } from '../components/WalletGuard.js';
 import { useDeposit } from '../hooks/useDeposit.js';
 import { loadNote, markNoteClaimed, NoteData } from '../lib/note.js';
 import { formatUsdcAmount } from '../lib/usdc.js';
-import { getCircuit } from '../../noir/compile.js';
+import { getCircuit } from '../../../circuits/compile.js';
 import { toast } from 'react-toastify';
 import './WithdrawPage.css';
 
@@ -38,7 +38,7 @@ export function WithdrawPage() {
 
     // Note source: localStorage or pasted JSON
     const [noteInput, setNoteInput] = useState('');
-    const [noteSource, setNoteSource] = useState<'local' | 'paste'>('local');
+    const [noteSource, setNoteSource] = useState<'local' | 'paste'>('paste');
     const localNote = loadNote();
 
     // Resolve the active note based on source

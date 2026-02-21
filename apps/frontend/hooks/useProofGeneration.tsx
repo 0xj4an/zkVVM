@@ -1,6 +1,6 @@
 import { toast } from 'react-toastify';
 import { useEffect, useState } from 'react';
-import { getCircuit } from '../../noir/compile.js';
+import { getCircuit } from '../../../circuits/compile.js';
 import { UltraPlonkBackend } from '@aztec/bb.js';
 import { Noir } from '@noir-lang/noir_js';
 import { ProofData } from '@noir-lang/types';

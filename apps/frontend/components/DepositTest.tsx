@@ -6,7 +6,7 @@ import { useDeposit } from '../hooks/useDeposit.js';
 import { toast } from 'react-toastify';
 import { parseUsdcAmount, formatUsdcAmount } from '../lib/usdc.js';
 import { generateNote, saveNote, loadNote } from '../lib/note.js';
-import { getCircuit } from '../../noir/compile.js';
+import { getCircuit } from '../../../circuits/compile.js';
 import './DepositTest.css';
 
 export function DepositTest() {

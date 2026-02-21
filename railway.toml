@@ -1,9 +1,0 @@
-[build]
-builder = "nixpacks"
-
-[deploy]
-startCommand = "bun run --filter=vite dev --host 0.0.0.0 --port ${PORT:-8080}"
-healthcheckPath = "/"
-healthcheckTimeout = 300
-restartPolicyType = "on-failure"
-restartPolicyMaxRetries = 10
