@@ -12,6 +12,8 @@
     "deploy": "bunx hardhat deploy",
     "dev": "bun --cwd apps/frontend dev",
     "dev:frontend": "bun --cwd apps/frontend dev",
+    "build": "bun --cwd apps/frontend run build",
+    "start": "bun --cwd apps/frontend run preview",
     "build:frontend": "bun --cwd apps/frontend run vite build",
     "build:circuits": "bun --cwd circuits run compile.ts",
     "test:up": "bun test ./tests/up.test.ts",
