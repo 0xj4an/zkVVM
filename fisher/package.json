@@ -1,0 +1,16 @@
+{
+  "name": "fisher",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@evvm/evvm-js": "^0.1.20",
+    "viem": "2.x"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
