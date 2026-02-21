@@ -120,6 +120,16 @@ export function DashboardPage() {
         }
     };
 
+    const handleRegisterRoot = () => {
+        const note = loadNote();
+        if (!note?.expected_merkle_root) {
+            toast.error('No merkle root found in note');
+            return;
+        }
+        toast.info('Registering merkle root...');
+        registerRoot(note.expected_merkle_root as `0x${string}`);
+    };
+
     const depositLabel = isGeneratingNote
         ? 'Generating note...'
         : isPending
@@ -224,9 +234,14 @@ export function DashboardPage() {
                                         </div>
                                         <div className="align-right">
                                             {!savedNote.claimed && (
-                                                <button className="btn-icon copy-btn" onClick={handleCopyNote}>
-                                                    &#128190; COPY KEY
-                                                </button>
+                                                <>
+                                                    <button className="btn-icon copy-btn" onClick={handleRegisterRoot} style={{ marginRight: '8px' }}>
+                                                        &#128190; REGISTER ROOT
+                                                    </button>
+                                                    <button className="btn-icon copy-btn" onClick={handleCopyNote}>
+                                                        &#128190; COPY KEY
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
                                     </div>
