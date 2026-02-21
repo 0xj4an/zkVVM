@@ -67,6 +67,18 @@ graph LR
     style N fill:#f59e0b,color:#fff
 ```
 
+### Note String Format
+
+Bearer notes are stored and shared as strings with the following format:
+
+`zk-<amount>-<pk_b>-<random>`
+
+- **amount**: The value of the note in decimal (e.g., `100.00`).
+- **pk_b**: The bearer secret key in hex format (e.g., `0x123...`).
+- **random**: A random salt used for nullifier and commitment derivation in hex format.
+
+This string contains all the secrets required to recompute the note's nullifier and generate a ZK proof for withdrawal.
+
 ### Circuits
 
 | Circuit | Purpose | Public Inputs |

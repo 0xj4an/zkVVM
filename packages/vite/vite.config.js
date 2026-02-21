@@ -6,7 +6,8 @@ export default {
     esbuildOptions: {
       target: 'esnext',
     },
-    include: ['@noir-lang/noir_js', '@noir-lang/acvm_js', '@noir-lang/noirc_abi'],
+    exclude: ['@noir-lang/acvm_js', '@noir-lang/noirc_abi', '@noir-lang/noir_js'],
+    include: ['@noir-lang/types'],
   },
   plugins: [react()],
 };

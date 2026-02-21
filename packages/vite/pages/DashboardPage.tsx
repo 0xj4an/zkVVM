@@ -1,13 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WalletGuard } from '../components/WalletGuard.js';
+import { useZK, StoredNote } from '../lib/hooks/useZK';
 import './DashboardPage.css';
 
 export function DashboardPage() {
     const [amount, setAmount] = useState('100.00');
+    const [notes, setNotes] = useState<StoredNote[]>([]);
+    const { mintBearerToken, getStoredNotes, copyNote, isInitializing } = useZK();
 
-    const handleMint = (e: React.FormEvent) => {
+    useEffect(() => {
+        setNotes(getStoredNotes());
+    }, [getStoredNotes]);
+
+    const handleMint = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Minting', amount);
+        try {
+            await mintBearerToken(amount);
+            setNotes(getStoredNotes());
+        } catch (err) {
+            console.error('Failed to mint:', err);
+        }
+    };
+
+    const handleCopy = async (noteStr: string) => {
+        await copyNote(noteStr);
+        alert('Note copied to clipboard!');
     };
 
     return (
@@ -35,8 +52,12 @@ export function DashboardPage() {
                             </div>
                         </div>
 
-                        <button type="submit" className="btn-primary submit-btn">
-                            MINT BEARER NOTE ⚡
+                        <button
+                            type="submit"
+                            className="btn-primary submit-btn"
+                            disabled={isInitializing}
+                        >
+                            {isInitializing ? 'INITIALIZING ZK...' : 'MINT BEARER NOTE ⚡'}
                         </button>
                     </form>
                 </div>
@@ -53,16 +74,28 @@ export function DashboardPage() {
                             <div>VALUE</div>
                             <div className="align-right">SECRET CODE</div>
                         </div>
-                        <div className="table-row">
-                            <div className="text-secondary">Oct 12</div>
-                            <div><strong>500</strong> <span className="text-secondary">USDC</span></div>
-                            <div className="align-right"><button className="btn-icon copy-btn">&#128190; COPY KEY</button></div>
-                        </div>
-                        <div className="table-row">
-                            <div className="text-secondary">Oct 14</div>
-                            <div><strong>100</strong> <span className="text-secondary">USDC</span></div>
-                            <div className="align-right"><button className="btn-icon copy-btn">&#128190; COPY KEY</button></div>
-                        </div>
+                        {notes.length === 0 ? (
+                            <div className="table-row">
+                                <div className="text-secondary" style={{ textAlign: 'center', width: '100%' }}>
+                                    No notes found in your local vault.
+                                </div>
+                            </div>
+                        ) : (
+                            notes.map((note, i) => (
+                                <div className="table-row" key={i}>
+                                    <div className="text-secondary">{note.date}</div>
+                                    <div><strong>{note.amount}</strong> <span className="text-secondary">USDC</span></div>
+                                    <div className="align-right">
+                                        <button
+                                            className="btn-icon copy-btn"
+                                            onClick={() => handleCopy(note.noteStr)}
+                                        >
+                                            &#128190; COPY KEY
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </WalletGuard>

@@ -1,6 +1,11 @@
 import { Barretenberg, Fr } from '@aztec/bb.js';
 import { Noir } from '@noir-lang/noir_js';
 import { CompiledCircuit } from '@noir-lang/types';
+import initACVM from '@noir-lang/acvm_js/web/acvm_js.js';
+import initNoirAbi from '@noir-lang/noirc_abi/web/noirc_abi_wasm.js';
+// Use direct web paths to avoid Node.js/Web mismatch
+import acvmWasm from '@noir-lang/acvm_js/web/acvm_js_bg.wasm?url';
+import abiWasm from '@noir-lang/noirc_abi/web/noirc_abi_wasm_bg.wasm?url';
 
 export interface Note {
   value: bigint;
@@ -14,8 +19,19 @@ export interface Note {
 
 export class ZKService {
   private bb: Barretenberg | null = null;
+  private static wasmInitialized = false;
 
   async init() {
+    if (typeof window !== 'undefined' && !ZKService.wasmInitialized) {
+      try {
+        await initACVM(acvmWasm);
+        await initNoirAbi(abiWasm);
+        ZKService.wasmInitialized = true;
+      } catch (e: any) {
+        console.error('Failed to initialize ZK WASM:', e);
+        throw e;
+      }
+    }
     if (!this.bb) {
       this.bb = await Barretenberg.new();
     }
