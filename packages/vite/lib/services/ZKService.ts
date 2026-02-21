@@ -185,7 +185,7 @@ export class ZKService {
     secret_hex: string,
     salt_hex: string,
   ): Promise<Note> {
-    const value = BigInt(Math.floor(parseFloat(amount) * 1e6)); // Assuming 6 decimals
+    const value = BigInt(Math.floor(parseFloat(amount) * 1e18)); // Assuming 18 decimals
     const secret = BigInt(secret_hex);
     const salt = BigInt(salt_hex);
 

@@ -41,16 +41,23 @@ export function DashboardPage() {
             const note = await zkService.recomputeNote(zkNoteArtifact as any, amt, secret, salt);
 
             // amount in token units (mirrors zkService.generateNote logic)
-            const value = BigInt(Math.floor(parseFloat(stored.amount) * 1e6));
+            const value = BigInt(Math.floor(parseFloat(stored.amount) * 1e18));
 
-            // random nonce: 32 bytes
-            const rand = new Uint8Array(32);
-            if (typeof window !== 'undefined' && window.crypto) window.crypto.getRandomValues(rand);
-            else for (let i = 0; i < 32; i++) rand[i] = Math.floor(Math.random() * 256);
-            let n = 0n;
-            for (const b of rand) n = (n << 8n) + BigInt(b);
+            // Generate unique nonce for pay action
+            const randPay = new Uint8Array(32);
+            if (typeof window !== 'undefined' && window.crypto) window.crypto.getRandomValues(randPay);
+            else for (let i = 0; i < 32; i++) randPay[i] = Math.floor(Math.random() * 256);
+            let nPay = 0n;
+            for (const b of randPay) nPay = (nPay << 8n) + BigInt(b);
+            const noncePay = nPay;
 
-            const nonce = n;
+            // Generate unique nonce for deposit action
+            const randDeposit = new Uint8Array(32);
+            if (typeof window !== 'undefined' && window.crypto) window.crypto.getRandomValues(randDeposit);
+            else for (let i = 0; i < 32; i++) randDeposit[i] = Math.floor(Math.random() * 256);
+            let nDeposit = 0n;
+            for (const b of randDeposit) nDeposit = (nDeposit << 8n) + BigInt(b);
+            const nonceDeposit = nDeposit;
 
             const ZKVVM_ADDRESS = (import.meta.env.VITE_ZKVVM_ADDRESS || '') as string;
 
@@ -65,7 +72,7 @@ export function DashboardPage() {
                 tokenAddress: zeroAddress,
                 amount: value,
                 priorityFee: 0n,
-                nonce,
+                nonce: noncePay,
                 isAsyncExec: true,
             });
 
@@ -74,7 +81,7 @@ export function DashboardPage() {
                 commitment: `0x${note.entry.toString(16)}`,
                 amount: value,
                 originExecutor: zeroAddress,
-                nonce,
+                nonce: nonceDeposit,
                 evvmSignedAction: payAction,
             });
 
@@ -139,16 +146,16 @@ export function DashboardPage() {
 
                     {payActionJson && depositActionJson && (
                         <div className="signed-actions-box">
-                            <h4>Signed Actions (not executed)</h4>
+                            <h4>Generated Signed Actions</h4>
                             <div className="signed-action">
-                                <div className="signed-action-header">Core.pay()</div>
+                                <div className="signed-action-header">core.pay()</div>
                                 <pre className="signed-action-json">{payActionJson}</pre>
-                                <button className="btn-secondary" onClick={() => navigator.clipboard.writeText(payActionJson)}>Copy Pay Action</button>
+                                <button className="btn-secondary" onClick={() => navigator.clipboard.writeText(payActionJson)}>📋 Copy JSON</button>
                             </div>
                             <div className="signed-action">
                                 <div className="signed-action-header">zkVVM.deposit()</div>
                                 <pre className="signed-action-json">{depositActionJson}</pre>
-                                <button className="btn-secondary" onClick={() => navigator.clipboard.writeText(depositActionJson)}>Copy Deposit Action</button>
+                                <button className="btn-secondary" onClick={() => navigator.clipboard.writeText(depositActionJson)}>📋 Copy JSON</button>
                             </div>
                         </div>
                     )}

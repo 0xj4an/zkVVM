@@ -37,7 +37,7 @@ export function useZK() {
 
     const mintBearerToken = useCallback(async (amount: string): Promise<StoredNote> => {
         try {
-            const value = BigInt(Math.floor(parseFloat(amount) * 1e6)); // Assuming 6 decimals for USDC-like
+            const value = BigInt(Math.floor(parseFloat(amount) * 1e18)); // Assuming 6 decimals for USDC-like
             const secret = zkService.generateSecret();
             const salt = zkService.generateSecret();
 
