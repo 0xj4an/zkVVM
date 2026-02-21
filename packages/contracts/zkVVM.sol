@@ -8,11 +8,13 @@ import {IVerifier} from './IVerifier.sol';
 contract zkVVM is EvvmService {
     error DepositNonceValidationFailed(bytes reason);
     error DepositPaymentFailed(bytes reason);
+    error WithdrawNonceValidationFailed(bytes reason);
     bytes32 private constant POOL_SALT = keccak256('ShieldedPool.v2b');
     mapping(bytes => bool) public commitments;
     mapping(bytes32 => bool) public merkleRoots;
     mapping(bytes32 => bool) public nullifiers;
 
+    bytes32 public currentRoot;
     address public admin;
 
     IVerifier public immutable withdrawVerifier;
@@ -20,6 +22,8 @@ contract zkVVM is EvvmService {
     event Deposited(address indexed user, bytes commitment, uint256 amount);
     event Withdrawn(address indexed recipient, bytes32 indexed nullifier, uint256 amount);
     event RootRegistered(bytes32 indexed root);
+    event RootChecked(bytes32 root, bool isRegistered);
+    event DebugRootCheck(bytes32 root, bool isRegistered);
 
     constructor(
         address _admin,
@@ -29,6 +33,10 @@ contract zkVVM is EvvmService {
     ) EvvmService(_coreAddress, _stakingAddress) {
         withdrawVerifier = IVerifier(_withdrawVerifierAddress);
         admin = _admin;
+    }
+
+    function getCurrentRoot() external view returns (bytes32) {
+        return currentRoot;
     }
 
     // we will need two main functions:
@@ -42,11 +50,12 @@ contract zkVVM is EvvmService {
         bytes memory signature,
         uint256 priorityFeePay,
         uint256 noncePay,
-        bytes memory signaturePay
+        bytes memory signaturePay,
+        bytes32 expectedNextRoot
     ) external {
         try core.validateAndConsumeNonce(
             user,
-            keccak256(abi.encode('deposit', commitment, amount)),
+            keccak256(abi.encode('deposit', commitment, amount, expectedNextRoot)),
             originExecutor,
             nonce,
             true,
@@ -81,6 +90,14 @@ contract zkVVM is EvvmService {
             revert DepositPaymentFailed(reason);
         }
 
+        // Update merkle root if provided
+        if (expectedNextRoot != bytes32(0)) {
+            require(!merkleRoots[expectedNextRoot], 'zkVVM: root-already-exists');
+            currentRoot = expectedNextRoot;
+            merkleRoots[expectedNextRoot] = true;
+            emit RootRegistered(expectedNextRoot);
+        }
+
         emit Deposited(user, commitment, amount);
     }
 
@@ -89,6 +106,7 @@ contract zkVVM is EvvmService {
         address user,
         address recipient,
         bytes calldata proof,
+        bytes32 expectedRoot,
         bytes32[] calldata publicInputs,
         bytes32 ciphertext,
         address originExecutor,
@@ -96,14 +114,17 @@ contract zkVVM is EvvmService {
         bytes memory signature
     ) external {
         // spend nonce and verify signature
-        core.validateAndConsumeNonce(
+        try core.validateAndConsumeNonce(
             user,
-            keccak256(abi.encode('withdraw', proof)),
+            keccak256(abi.encode('withdraw', recipient, proof, publicInputs, ciphertext)),
             originExecutor,
             nonce,
             true,
             signature
-        );
+        ) {
+        } catch (bytes memory reason) {
+            revert WithdrawNonceValidationFailed(reason);
+        }
 
         // Public input layout (v2b, matches Noir withdraw.nr and tests):
         // 0: nullifier
@@ -113,9 +134,11 @@ contract zkVVM is EvvmService {
         // 4: commitment
         require(publicInputs.length == 5, 'zkVVM: invalid-public-inputs');
 
+        // Verify the explicit parameter matches the ZK public input
+        require(expectedRoot == publicInputs[2], 'zkVVM: root-mismatch');
+
         bytes32 nullifierIn = publicInputs[0];
         bytes32 merkleProofLength = publicInputs[1];
-        bytes32 expectedRoot = publicInputs[2];
         bytes32 recipientField = publicInputs[3];
         // commitment field is publicInputs[4]; it is enforced inside the zk proof
 

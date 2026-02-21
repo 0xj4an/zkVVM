@@ -71,12 +71,20 @@ export function WithdrawPage() {
             console.log('  - publicInputs length:', publicInputs.length);
             console.log('  - recipient:', address);
             console.log('  - nonce:', randomNonce.toString());
+            console.log('  - expectedRoot:', publicInputs[2]);
             
             setIsSigningWithdraw(true);
 
             // build signed action (don't execute it) - this will request signature
             console.log('Calling service.withdraw()...');
-            const signedAction = await service.withdraw({ proof, publicInputs, ciphertext: ciphertext as any, recipient: address as any, nonce: randomNonce });
+            const signedAction = await service.withdraw({ 
+              proof, 
+              publicInputs, 
+              ciphertext: ciphertext as any, 
+              recipient: address as any, 
+              expectedRoot: publicInputs[2] as any,
+              nonce: randomNonce 
+            });
 
             console.log('✓ Withdraw SignedAction received:', signedAction);
             setWithdrawAction(signedAction);

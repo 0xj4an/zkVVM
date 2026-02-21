@@ -23,6 +23,31 @@ function requireEnvOrStored(name, value, storedKey) {
   return value;
 }
 
+async function registerDefaultRoot(zkVVMAddress) {
+  const adminPrivateKey = process.env.ZKVVM_ADMIN_KEY || process.env.EVVM_SEPOLIA_KEY;
+  const rootToRegister = process.env.DEFAULT_MERKLE_ROOT || '0x0000000000000000000000000000000000000000000000000000000000000000';
+  const autoRegisterRoot = process.env.REGISTER_DEFAULT_ROOT === 'true';
+
+  if (!autoRegisterRoot) {
+    console.log('Skipping default merkle root registration (set REGISTER_DEFAULT_ROOT=true to enable)');
+    return;
+  }
+
+  if (!adminPrivateKey) {
+    console.log('Skipping root registration: ZKVVM_ADMIN_KEY or EVVM_SEPOLIA_KEY not set');
+    return;
+  }
+
+  const wallet = new hre.ethers.Wallet(adminPrivateKey, hre.ethers.provider);
+  const zkVVM = await hre.ethers.getContractAt('zkVVM', zkVVMAddress, wallet);
+
+  console.log(`Registering default merkle root: ${rootToRegister}`);
+  const tx = await zkVVM.registerRoot(rootToRegister);
+  console.log('Transaction sent:', tx.hash);
+  const receipt = await tx.wait();
+  console.log('Root registered in block:', receipt.blockNumber);
+}
+
 async function main() {
   await hre.run('compile');
 
@@ -65,6 +90,8 @@ async function main() {
   fs.writeFileSync(file, JSON.stringify(data, null, 2));
   console.log(`zkVVM deployed at ${zkVVM.address}`);
   console.log(`Saved to ${file}`);
+
+  await registerDefaultRoot(zkVVM.address);
 }
 
 main().catch((err) => {

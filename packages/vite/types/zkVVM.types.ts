@@ -10,12 +10,14 @@ export interface IDepositData {
   priorityFeePay?: bigint;
   noncePay: bigint;
   signaturePay: string;
+  expectedNextRoot?: HexString;
 }
 
 export interface IWithdrawData {
   user: HexString;
   recipient: HexString;
   proof: string;
+  expectedRoot: HexString;
   publicInputs: any[];
   ciphertext: HexString;
   originExecutor: HexString;

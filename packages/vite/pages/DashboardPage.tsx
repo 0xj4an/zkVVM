@@ -145,12 +145,14 @@ export function DashboardPage() {
       }
 
       // Build deposit SignedAction embedding pay metadata
+      const noteRootHex = normalizeHexBytes(`0x${note.root.toString(16)}`) as `0x${string}`;
       const depositAction = await service.deposit({
         commitment: commitmentHex,
         amount: value,
         originExecutor: zeroAddress,
         nonce: nonceDeposit,
         evvmSignedAction: payAction,
+        expectedNextRoot: noteRootHex,
       });
 
       if (depositAction?.data?.signature) {
@@ -159,6 +161,8 @@ export function DashboardPage() {
       if (depositAction?.data?.signaturePay) {
         depositAction.data.signaturePay = normalizeHexBytes(depositAction.data.signaturePay);
       }
+
+      const expectedNextRoot = (depositAction as any).data?.expectedNextRoot;
 
       const payEvvmId = toBigInt((payAction as any).evvmId ?? (await core.getEvvmID()));
       const depositEvvmId = toBigInt((depositAction as any).evvmId ?? (await service.getEvvmID()));
@@ -187,6 +191,7 @@ export function DashboardPage() {
         hashArgs: {
           commitment: commitmentHex,
           amount: value,
+          expectedNextRoot: expectedNextRoot,
         },
         executor: zeroAddress,
         nonce: nonceDeposit,

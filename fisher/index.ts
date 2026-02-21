@@ -176,7 +176,11 @@ function buildRevertDebug(
     outerSelector,
   };
 
-  if (outerSelector === '0xbc92d5bc' || outerSelector === '0xe2bbc03d') {
+  if (
+    outerSelector === '0xbc92d5bc' ||
+    outerSelector === '0xe2bbc03d' ||
+    outerSelector === '0x71d49912'
+  ) {
     try {
       const decoded = decodeAbiParameters(
         [{ type: 'bytes' }],
