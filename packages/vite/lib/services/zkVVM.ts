@@ -61,6 +61,7 @@ export class zkVVM extends BaseService {
   async withdraw({
     proof,
     publicInputs,
+    ciphertext,
     recipient,
     originExecutor = zeroAddress,
     nonce,
@@ -68,6 +69,7 @@ export class zkVVM extends BaseService {
     proof: string;
     recipient: HexString;
     publicInputs: any[];
+    ciphertext: HexString;
     originExecutor?: HexString;
     nonce: bigint;
   }): Promise<SignedAction<IWithdrawData>> {
@@ -76,6 +78,9 @@ export class zkVVM extends BaseService {
 
     const hashPayload = this.buildHashPayload(functionName, {
       proof,
+      publicInputs,
+      ciphertext,
+      recipient,
     });
     const message = this.buildMessageToSign(evvmId, hashPayload, zeroAddress, nonce, true);
 
@@ -87,6 +92,7 @@ export class zkVVM extends BaseService {
       recipient,
       proof,
       publicInputs,
+      ciphertext,
       originExecutor,
       nonce,
       signature,

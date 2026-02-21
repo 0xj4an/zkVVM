@@ -3,6 +3,7 @@ import { zkService, type Note } from '../services/ZKService';
 import noteGeneratorArtifact from '../../../noir/target/note_generator.json';
 import withdrawArtifact from '../../../noir/target/withdraw.json';
 import { CompiledCircuit } from '@noir-lang/types';
+import { computeCiphertext } from '../../../../lib/withdraw-v2b-ciphertext';
 
 export interface StoredNote {
     amount: string;
@@ -117,11 +118,14 @@ export function useZK() {
 
             // Store public inputs (from the circuit's pub inputs in order)
             // From withdraw.nr: nullifier, merkle_proof_length, expected_merkle_root, recipient, commitment
+            const merkleProofLength = 1n; // depth processed in this mock proof
+            const recipientField = BigInt(recipient);
+
             const publicInputs = [
                 note.nullifier,
-                1n, // merkle_proof_length
+                merkleProofLength, // merkle_proof_length
                 note.root, // expected_merkle_root
-                BigInt(recipient),
+                recipientField,
                 note.commitment
             ];
 
@@ -137,10 +141,10 @@ export function useZK() {
             const witnessResult = await zkService.generateWithdrawProof(
                 withdrawArtifact as CompiledCircuit,
                 note,
-                BigInt(recipient),
+                recipientField,
                 note.root,
                 mockMerkleProof,
-                1 // Only process the first level
+                Number(merkleProofLength) // Only process the first level
             );
 
             console.log('Witness generated successfully:', witnessResult);
@@ -161,11 +165,16 @@ export function useZK() {
             
             // Convert proof to hex (it's already hex from generateProofFromWitness)
             const proofHex = proofData.proof;
-            
+
             // Convert public inputs to hex strings
             const publicInputsHex = publicInputs.map((pi: bigint) => {
               return '0x' + pi.toString(16).padStart(64, '0');
             });
+
+            // Compute ciphertext for contract consumption (amount is private in the proof)
+            const nullifierHex = publicInputsHex[0] as `0x${string}`;
+            const recipientFieldHex = publicInputsHex[3] as `0x${string}`;
+            const ciphertext = computeCiphertext(note.value, nullifierHex, recipientFieldHex);
 
             console.log('Public inputs (hex):', publicInputsHex);
 
@@ -174,7 +183,8 @@ export function useZK() {
             
             return {
                 proof: proofHex,
-                publicInputs: publicInputsHex
+                publicInputs: publicInputsHex,
+                ciphertext
             };
         } catch (err: any) {
             const msg = err.message || 'Failed to generate withdrawal proof';

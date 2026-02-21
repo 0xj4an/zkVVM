@@ -14,9 +14,10 @@ export interface IDepositData {
 
 export interface IWithdrawData {
   user: HexString;
-  recipient: HexString,
+  recipient: HexString;
   proof: string;
   publicInputs: any[];
+  ciphertext: HexString;
   originExecutor: HexString;
   nonce: bigint;
   signature: string;

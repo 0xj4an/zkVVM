@@ -29,14 +29,15 @@ export function WithdrawPage() {
             const result: any = await generateWithdrawalProof(note, address);
             console.log('✓ Withdrawal proof generated, result:', result);
 
-            // The generateWithdrawalProof now returns { proof, publicInputs } directly
+            // The generateWithdrawalProof now returns { proof, publicInputs, ciphertext }
             const proof: string | undefined = result?.proof;
             const publicInputs: string[] | undefined = result?.publicInputs;
+            const ciphertext: string | undefined = result?.ciphertext;
 
             console.log('Extracted proof:', proof?.slice(0, 100) + '...');
             console.log('Extracted publicInputs:', publicInputs);
 
-            if (!proof || !publicInputs) {
+            if (!proof || !publicInputs || !ciphertext) {
                 // No proof/publicInputs available — only witness produced. Stop here.
                 console.log('⚠️ No proof or publicInputs available, marking success (witness-only)');
                 setSuccess(true);
@@ -69,7 +70,7 @@ export function WithdrawPage() {
 
             // build signed action (don't execute it) - this will request signature
             console.log('Calling service.withdraw()...');
-            const signedAction = await service.withdraw({ proof, publicInputs, recipient: address as any, nonce: randomNonce });
+            const signedAction = await service.withdraw({ proof, publicInputs, ciphertext: ciphertext as any, recipient: address as any, nonce: randomNonce });
 
             console.log('✓ Withdraw SignedAction received:', signedAction);
 

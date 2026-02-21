@@ -6,6 +6,7 @@ import {AdvancedStrings} from '@evvm/testnet-contracts/library/utils/AdvancedStr
 import {IVerifier} from './IVerifier.sol';
 
 contract zkVVM is EvvmService {
+    bytes32 private constant POOL_SALT = keccak256('ShieldedPool.v2b');
     mapping(bytes => bool) public commitments;
     mapping(bytes32 => bool) public merkleRoots;
     mapping(bytes32 => bool) public nullifiers;
@@ -78,6 +79,7 @@ contract zkVVM is EvvmService {
         address recipient,
         bytes calldata proof,
         bytes32[] calldata publicInputs,
+        bytes32 ciphertext,
         address originExecutor,
         uint256 nonce,
         bytes memory signature
@@ -92,28 +94,32 @@ contract zkVVM is EvvmService {
             signature
         );
 
-        // Interpret public inputs. The frontend/prover can provide multiple
-        // public input layouts. The most common (v2a) places `value` at index 0,
-        // `nullifier` at index 1 and `expectedRoot` at index 2. Other variants
-        // (v2b) may omit `value` and instead include `commitment`.
-        require(publicInputs.length >= 3, 'zkVVM: invalid-public-inputs');
+        // Public input layout (v2b, matches Noir withdraw.nr and tests):
+        // 0: nullifier
+        // 1: merkle_proof_length
+        // 2: expected_merkle_root
+        // 3: recipient (field)
+        // 4: commitment
+        require(publicInputs.length == 5, 'zkVVM: invalid-public-inputs');
 
-        bytes32 valueField = publicInputs[0];
-        bytes32 nullifierIn = publicInputs[1];
+        bytes32 nullifierIn = publicInputs[0];
+        bytes32 merkleProofLength = publicInputs[1];
         bytes32 expectedRoot = publicInputs[2];
+        bytes32 recipientField = publicInputs[3];
+        // commitment field is publicInputs[4]; it is enforced inside the zk proof
 
-        uint256 amount = uint256(valueField);
-        require(amount > 0, 'zkVVM: withdraw-amount-must-be-greater-than-zero');
+        require(uint256(merkleProofLength) > 0, 'zkVVM: invalid-merkle-depth');
         require(merkleRoots[expectedRoot], 'zkVVM: unknown-root');
         require(!nullifiers[nullifierIn], 'zkVVM: nullifier-used');
 
-        // If the circuit exposes a recipient as a public input, enforce it
-        // to prevent front-running. Many prover configs put recipient at
-        // index 3 (as a uint256). If present, require it equals `user`.
-        if (publicInputs.length > 3) {
-            address recipientFromProof = address(uint160(uint256(publicInputs[3])));
-            require(recipientFromProof == recipient, 'zkVVM: recipient-mismatch');
-        }
+        address recipientFromProof = address(uint160(uint256(recipientField)));
+        require(recipientFromProof == recipient, 'zkVVM: recipient-mismatch');
+
+        // Decrypt ciphertext: key = keccak256(nullifier || recipient || POOL_SALT)
+        bytes32 key = keccak256(abi.encodePacked(nullifierIn, recipientField, POOL_SALT));
+        bytes32 stream = keccak256(abi.encodePacked(key, uint256(0)));
+        uint256 amount = uint256(ciphertext ^ stream);
+        require(amount > 0, 'zkVVM: withdraw-amount-must-be-greater-than-zero');
 
         // delegate proof verification to Verifier contract
         require(withdrawVerifier.verify(proof, publicInputs), 'invalid proof');
