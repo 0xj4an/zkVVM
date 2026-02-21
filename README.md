@@ -206,6 +206,59 @@ bunx hardhat deploy --network holesky
 
 Networks must be [supported by Wagmi](https://wagmi.sh/react/api/chains#available-chains) and configured in `hardhat.config.cts`.
 
+## Deploying to EVVM Sepolia
+
+This project deploys three contracts on EVVM Sepolia using Hardhat + viem:
+
+- `MockVerifier` (test-only)
+- `UltraVerifier` (real verifier)
+- `zkVVM` (core pool contract wired to a verifier address)
+
+`zkVVM` takes the verifier address in the constructor, so switching from MockVerifier to UltraVerifier is done by redeploying `zkVVM` with the new verifier address.
+
+### Required Environment Variables
+
+Set these before deploying:
+
+- `EVVM_SEPOLIA_RPC_URL`
+- `EVVM_SEPOLIA_KEY`
+- `EVVM_CORE_ADDRESS`
+- `EVVM_STAKING_ADDRESS`
+- `ZKVVM_ADMIN_ADDRESS`
+- Optional: `EVVM_SEPOLIA_CHAIN_ID` (defaults to 11155111)
+- Optional: `WITHDRAW_VERIFIER_ADDRESS` (override verifier address for zkVVM deployment)
+
+### Step 1: Deploy MockVerifier + zkVVM (mock wiring)
+
+```bash
+bun run deploy:sepolia
+```
+
+This will:
+- Deploy `MockVerifier`
+- Deploy `zkVVM` wired to the MockVerifier address
+- Store addresses in `deployments/sepolia_evvm/addresses.json`
+
+### Step 2: Deploy UltraVerifier + redeploy zkVVM (real wiring)
+
+```bash
+bun run deploy:sepolia:real
+```
+
+This will:
+- Deploy `UltraVerifier`
+- Redeploy `zkVVM` wired to the new verifier address
+- Update `deployments/sepolia_evvm/addresses.json`
+
+If you need to force a specific verifier address, set `WITHDRAW_VERIFIER_ADDRESS` before running the command.
+
+### Address Output
+
+All deployments write to:
+- `deployments/sepolia_evvm/addresses.json`
+
+Use this file to configure the frontend and scripts with the latest deployed addresses.
+
 ## Project Scripts
 
 | Command | Description |
@@ -217,6 +270,8 @@ Networks must be [supported by Wagmi](https://wagmi.sh/react/api/chains#availabl
 | `bun run test` | Run all tests |
 | `bun run test:up` | Run UltraPlonk tests |
 | `bun run test:uh` | Run UltraHonk tests |
+| `bun run deploy:sepolia` | Deploy MockVerifier + zkVVM to EVVM Sepolia |
+| `bun run deploy:sepolia:real` | Deploy UltraVerifier + redeploy zkVVM on EVVM Sepolia |
 
 ## License
 

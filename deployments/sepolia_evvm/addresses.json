@@ -1,0 +1,17 @@
+{
+  "network": "sepolia_evvm",
+  "chainId": 11155111,
+  "evvm": {
+    "core": "",
+    "staking": ""
+  },
+  "admin": "",
+  "verifier": {
+    "mock": "",
+    "real": ""
+  },
+  "zkVVM": {
+    "address": "",
+    "withdrawVerifier": ""
+  }
+}

@@ -7,6 +7,8 @@
   ],
   "scripts": {
     "deploy": "bunx hardhat deploy --config hardhat.config.cts",
+    "deploy:sepolia": "./deploy.sh",
+    "deploy:sepolia:real": "bunx hardhat run scripts/deploy-ultra-verifier.js --config hardhat.config.cts --network sepoliaEvvm && bunx hardhat run scripts/deploy-zkvvm.js --config hardhat.config.cts --network sepoliaEvvm",
     "vite:dev": "bun --filter vite dev",
     "dev": "bun run deploy && bun run vite:dev",
     "test:up": "bun test ./tests/up.test.ts",

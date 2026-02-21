@@ -30,6 +30,13 @@ const config: HardhatUserConfig = {
           '0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a',
         ],
     },
+    sepoliaEvvm: {
+      url: process.env.EVVM_SEPOLIA_RPC_URL || '',
+      chainId: process.env.EVVM_SEPOLIA_CHAIN_ID
+        ? Number(process.env.EVVM_SEPOLIA_CHAIN_ID)
+        : 11155111,
+      accounts: process.env.EVVM_SEPOLIA_KEY ? [process.env.EVVM_SEPOLIA_KEY] : [],
+    },
     scrollSepolia: {
       url: 'https://sepolia-rpc.scroll.io',
       accounts: process.env.SCROLL_SEPOLIA_KEY ? [process.env.SCROLL_SEPOLIA_KEY] : [],
