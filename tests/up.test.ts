@@ -1,5 +1,7 @@
 import { expect, test, describe } from "bun:test";
 import { Noir } from "@noir-lang/noir_js";
+import { UltraHonkBackend } from "@aztec/bb.js";
+import { decompressSync } from "fflate";
 import noteGeneratorArtifact from "../packages/noir/target/note_generator.json" with { type: "json" };
 import withdrawArtifact from "../packages/noir/target/withdraw.json" with { type: "json" };
 import commitmentHelperArtifact from "../packages/noir/target/commitment_helper.json" with { type: "json" };
@@ -185,4 +187,55 @@ describe("zkVVM Circuit Tests (UltraPlonk)", () => {
 
         expect(noir.execute(inputs as any)).rejects.toThrow();
     });
+
+    test("Withdraw Circuit - Proof generates and verifies end-to-end", async () => {
+        const depth = 10;
+        const value = 500n;
+        const secret = 0xabc123n;
+        const salt = 0xdef456n;
+        const recipient = 0x789n;
+
+        const nullifier = await getNullifierHash(value, secret, salt);
+        const commitment = await getCommitment(value, nullifier);
+        const siblings = new Array(depth).fill(0n);
+        const indices = new Array(depth).fill(0);
+        const root = await getRoot(value, secret, salt, nullifier, indices, siblings);
+
+        const inputs = {
+            nullifier: toHex(nullifier),
+            merkle_proof_length: depth,
+            expected_merkle_root: toHex(root),
+            recipient: toHex(recipient),
+            commitment: toHex(commitment),
+            value: toHex(value),
+            pk_b: toHex(secret),
+            random: toHex(salt),
+            merkle_proof_indices: indices,
+            merkle_proof_siblings: siblings.map(toHex),
+        };
+
+        const noir = new Noir(withdrawArtifact as any);
+        const { witness } = await noir.execute(inputs as any);
+
+        const decompressedWitness = decompressSync(witness);
+        expect(decompressedWitness.length).toBeGreaterThan(0);
+
+        const backend = new UltraHonkBackend((withdrawArtifact as any).bytecode, { threads: 1 }, { recursive: false });
+        await backend.instantiate();
+
+        const proof = await backend.generateProof(witness);
+        expect(proof.proof.length).toBeGreaterThan(0);
+        expect(Array.isArray(proof.publicInputs)).toBe(true);
+
+        const verified = await backend.verifyProof(proof);
+        expect(verified).toBe(true);
+
+        const tampered = { ...proof, publicInputs: [...proof.publicInputs] };
+        tampered.publicInputs[3] = toHex(0x555n); // recipient mismatch should invalidate proof
+
+        const tamperedVerified = await backend.verifyProof(tampered as any);
+        expect(tamperedVerified).toBe(false);
+
+        await backend.destroy();
+    }, 20000);
 });
