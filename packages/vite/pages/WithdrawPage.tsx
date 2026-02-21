@@ -1,14 +1,25 @@
 import React, { useState } from 'react';
 import { WalletGuard } from '../components/WalletGuard.js';
+import { useZK } from '../lib/hooks/useZK';
 import './WithdrawPage.css';
 
 export function WithdrawPage() {
-    const [note, setNote] = useState('zkvvm-note-...');
-    const [address, setAddress] = useState('0x...');
+    const { generateWithdrawalProof, isProving, provingError } = useZK();
+    const [note, setNote] = useState('');
+    const [address, setAddress] = useState('');
+    const [success, setSuccess] = useState(false);
 
-    const handleWithdraw = (e: React.FormEvent) => {
+    const handleWithdraw = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Withdrawing note', note, 'to', address);
+        setSuccess(false);
+        try {
+            console.log('Generating proof for note', note, 'to', address);
+            const proof = await generateWithdrawalProof(note, address);
+            console.log('Withdrawal proof generated:', proof);
+            setSuccess(true);
+        } catch (err) {
+            console.error('Withdrawal failed:', err);
+        }
     };
 
     return (
@@ -46,14 +57,30 @@ export function WithdrawPage() {
                                 <span className="proof-icon">&#9871;</span> ZK PROOF LOGIC
                             </div>
                             <ul className="proof-logic-list">
-                                <li>Verifying Merkle membership proof</li>
-                                <li>Checking Nullifier non-existence</li>
-                                <li>Obscuring transaction linkability</li>
+                                <li className={isProving ? 'processing' : ''}>Verifying Merkle membership proof</li>
+                                <li className={isProving ? 'processing' : ''}>Checking Nullifier non-existence</li>
+                                <li className={isProving ? 'processing' : ''}>Obscuring transaction linkability</li>
                             </ul>
                         </div>
 
-                        <button type="submit" className="btn-primary submit-btn fade-in-up delay-4">
-                            Generate Proof & Withdraw ⚡
+                        {provingError && (
+                            <div className="error-message fade-in">
+                                {provingError}
+                            </div>
+                        )}
+
+                        {success && (
+                            <div className="success-message fade-in">
+                                ZK Proof generated successfully! (On-chain withdrawal skipped for now)
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            className="btn-primary submit-btn fade-in-up delay-4"
+                            disabled={isProving || !note || !address}
+                        >
+                            {isProving ? 'Generating ZK Proof...' : 'Generate Proof & Withdraw ⚡'}
                         </button>
                     </form>
                 </div>

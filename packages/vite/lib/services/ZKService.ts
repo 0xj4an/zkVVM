@@ -159,6 +159,38 @@ export class ZKService {
   }
 
   /**
+   * Parses a note string in the format: zk-<amount>-<pk_b>-<random>
+   */
+  parseNoteString(noteStr: string) {
+    const parts = noteStr.split('-');
+    if (parts.length !== 4 || parts[0] !== 'zk') {
+      throw new Error('Invalid note string format. Expected: zk-<amount>-<pk_b>-<random>');
+    }
+
+    return {
+      amount: parts[1],
+      pk_b: parts[2],
+      random: parts[3],
+    };
+  }
+
+  /**
+   * Recomputes a Note object from its secret components using the note_generator circuit.
+   */
+  async recomputeNote(
+    circuit: CompiledCircuit,
+    amount: string,
+    pk_b_hex: string,
+    random_hex: string,
+  ): Promise<Note> {
+    const value = BigInt(Math.floor(parseFloat(amount) * 1e6)); // Assuming 6 decimals
+    const pk_b = BigInt(pk_b_hex);
+    const random = BigInt(random_hex);
+
+    return this.generateNote(circuit, value, pk_b, random);
+  }
+
+  /**
    * Generates a withdrawal proof using the withdraw circuit.
    */
   async generateWithdrawProof(
@@ -167,10 +199,11 @@ export class ZKService {
     recipient: bigint,
     merkleRoot: bigint,
     merkleProof: { indices: number[]; siblings: bigint[] },
+    merkleProofLength?: number,
   ) {
     const inputs = {
       nullifier: note.nullifier,
-      merkle_proof_length: merkleProof.indices.length,
+      merkle_proof_length: merkleProofLength ?? merkleProof.indices.length,
       expected_merkle_root: merkleRoot,
       recipient: recipient,
       commitment: note.commitment,

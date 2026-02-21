@@ -6,6 +6,7 @@ import './DashboardPage.css';
 export function DashboardPage() {
     const [amount, setAmount] = useState('100.00');
     const [notes, setNotes] = useState<StoredNote[]>([]);
+    const [showToast, setShowToast] = useState(false);
     const { mintBearerToken, getStoredNotes, copyNote, isInitializing } = useZK();
 
     useEffect(() => {
@@ -24,7 +25,8 @@ export function DashboardPage() {
 
     const handleCopy = async (noteStr: string) => {
         await copyNote(noteStr);
-        alert('Note copied to clipboard!');
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
     };
 
     return (
@@ -99,6 +101,13 @@ export function DashboardPage() {
                     </div>
                 </div>
             </WalletGuard>
+
+            {showToast && (
+                <div className="toast-notification fade-in-up">
+                    <span className="toast-icon">&#10003;</span>
+                    Note string copied to clipboard!
+                </div>
+            )}
         </div>
     );
 }

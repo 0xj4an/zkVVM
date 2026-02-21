@@ -64,3 +64,53 @@
     color: #00ffaa;
     font-size: 1.2em;
 }
+
+.submit-btn {
+    width: 100%;
+    margin-top: 24px;
+}
+
+.submit-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+    filter: grayscale(0.5);
+}
+
+.error-message {
+    color: #ff4b4b;
+    background: rgba(255, 75, 75, 0.1);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-top: 20px;
+    border: 1px solid rgba(255, 75, 75, 0.2);
+}
+
+.success-message {
+    color: #00e676;
+    background: rgba(0, 230, 118, 0.1);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-top: 20px;
+    border: 1px solid rgba(0, 230, 118, 0.2);
+}
+
+.processing {
+    color: #00ffaa;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
