@@ -46,19 +46,19 @@ async function compute_entry(value, holder, random, nullifier) {
 // inputs
 const value = 0x5n;
 const from = 0x7n;
-const random = 0x9n;
+const salt = 0x9n; // formerly `random`
 const nullifier_in = 0x2n;
-const pk_b = 0x13n;
+const secret = 0x13n; // bearer secret (maps to `pk_b` in circuits)
 
-const nullifier_out = await poseidon2(random, pk_b);
-const entry_in = await compute_entry(value, from, random, nullifier_in);
-const entry_out = await compute_entry(value, pk_b, random, nullifier_out);
+const nullifier_out = await poseidon2(salt, secret);
+const entry_in = await compute_entry(value, from, salt, nullifier_in);
+const entry_out = await compute_entry(value, secret, salt, nullifier_out);
 
 const root = await poseidon2(entry_in, 0n);
 const root_alt = await poseidon2(0n, entry_in);
 
 console.log("Poseidon2: ", await poseidon2(value, from));
-console.log("Poseidon2: ", await poseidon2(random, nullifier_in));
+console.log("Poseidon2: ", await poseidon2(salt, nullifier_in));
 console.log("nullifier_out =", hex(nullifier_out));
 console.log("entry_in      =", hex(entry_in));
 console.log("entry_out     =", hex(entry_out));

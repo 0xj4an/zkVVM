@@ -1,6 +1,7 @@
 #!/bin/bash
 # Runs nullifier_helper: given value (in NullifierHelperProver.toml), outputs nullifier and expected_merkle_root.
-# nullifier = H(random, pk_b) with pk_b=2, random=100. Use these in CommitmentHelperProver.toml and WithdrawProver.toml.
+# nullifier = H(salt, secret) with secret=2, salt=100. Use these in CommitmentHelperProver.toml and WithdrawProver.toml.
+# Note: the Noir circuit parameters are named `pk_b` and `random`; map secret->pk_b and salt->random when filling prover files.
 #
 # Usage: cd packages/noir && ./scripts/compute_nullifier.sh
 # Output: two lines, nullifier then expected_merkle_root (0x... each).

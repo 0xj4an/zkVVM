@@ -17,12 +17,12 @@ describe("zkVVM Circuit Tests (UltraPlonk)", () => {
     };
 
     // Helper wrappers
-    const getNullifierHash = async (value: bigint, pk_b: bigint, random: bigint): Promise<bigint> => {
+    const getNullifierHash = async (value: bigint, secret: bigint, salt: bigint): Promise<bigint> => {
         const noir = new Noir(noteGeneratorArtifact as any);
         const { returnValue } = await noir.execute({
             value: toHex(value),
-            pk_b: toHex(pk_b),
-            random: toHex(random)
+            pk_b: toHex(secret),
+            random: toHex(salt)
         });
         const result = returnValue as any[];
         return toBigInt(result[0]); // nullifier
@@ -39,8 +39,8 @@ describe("zkVVM Circuit Tests (UltraPlonk)", () => {
 
     const getRoot = async (
         value: bigint,
-        pk_b: bigint,
-        random: bigint,
+        secret: bigint,
+        salt: bigint,
         nullifier: bigint,
         indices: number[],
         siblings: bigint[]
@@ -48,8 +48,8 @@ describe("zkVVM Circuit Tests (UltraPlonk)", () => {
         const noir = new Noir(rootHelperArtifact as any);
         const { returnValue } = await noir.execute({
             value: toHex(value),
-            from: toHex(pk_b),
-            random: toHex(random),
+            from: toHex(secret),
+            random: toHex(salt),
             nullifier_in: toHex(nullifier),
             merkle_proof_length: indices.length,
             merkle_proof_indices: indices,
@@ -62,18 +62,18 @@ describe("zkVVM Circuit Tests (UltraPlonk)", () => {
         const noir = new Noir(noteGeneratorArtifact as any);
         const inputs = {
             value: 100n,
-            pk_b: 0xabc123n,
-            random: 0xdef456n,
+            secret: 0xabc123n,
+            salt: 0xdef456n,
         };
 
         const { returnValue } = await noir.execute({
             value: toHex(inputs.value),
-            pk_b: toHex(inputs.pk_b),
-            random: toHex(inputs.random),
+            pk_b: toHex(inputs.secret),
+            random: toHex(inputs.salt),
         });
         const result = returnValue as any[];
 
-        const expectedNullifier = await getNullifierHash(inputs.value, inputs.pk_b, inputs.random);
+        const expectedNullifier = await getNullifierHash(inputs.value, inputs.secret, inputs.salt);
         const expectedCommitment = await getCommitment(inputs.value, expectedNullifier);
 
         expect(toBigInt(result[0])).toBe(expectedNullifier);
@@ -84,18 +84,18 @@ describe("zkVVM Circuit Tests (UltraPlonk)", () => {
         const noir = new Noir(withdrawArtifact as any);
 
         const value = 500n;
-        const pk_b = 0xabc123n;
-        const random = 0xdef456n;
+        const secret = 0xabc123n;
+        const salt = 0xdef456n;
         const recipient = 0x789n;
 
-        const nullifier = await getNullifierHash(value, pk_b, random);
+        const nullifier = await getNullifierHash(value, secret, salt);
         const commitment = await getCommitment(value, nullifier);
 
         const depth = 10;
         const siblings = new Array(depth).fill(0n);
         const indices = new Array(depth).fill(0);
 
-        const root = await getRoot(value, pk_b, random, nullifier, indices, siblings);
+        const root = await getRoot(value, secret, salt, nullifier, indices, siblings);
 
         const inputs = {
             nullifier: toHex(nullifier),
@@ -104,8 +104,8 @@ describe("zkVVM Circuit Tests (UltraPlonk)", () => {
             recipient: toHex(recipient),
             commitment: toHex(commitment),
             value: toHex(value),
-            pk_b: toHex(pk_b),
-            random: toHex(random),
+            pk_b: toHex(secret),
+            random: toHex(salt),
             merkle_proof_indices: indices,
             merkle_proof_siblings: siblings.map(toHex),
         };
@@ -114,21 +114,61 @@ describe("zkVVM Circuit Tests (UltraPlonk)", () => {
         expect(witness).toBeDefined();
     });
 
-    test("Withdraw Circuit - Invalid Commitment", async () => {
+    test("Withdraw Circuit - Tampered Recipient", async () => {
         const noir = new Noir(withdrawArtifact as any);
 
         const value = 500n;
-        const pk_b = 0xabc123n;
-        const random = 0xdef456n;
-        const recipient = 0x789n;
+        const secret = 0xabc123n;
+        const salt = 0xdef456n;
+        const recipientA = 0x789n;
+        const recipientB = 0x555n;
 
-        const nullifier = await getNullifierHash(value, pk_b, random);
+        const nullifier = await getNullifierHash(value, secret, salt);
         const commitment = await getCommitment(value, nullifier);
 
         const depth = 10;
         const siblings = new Array(depth).fill(0n);
         const indices = new Array(depth).fill(0);
-        const root = await getRoot(value, pk_b, random, nullifier, indices, siblings);
+
+        const root = await getRoot(value, secret, salt, nullifier, indices, siblings);
+
+        const inputsA = {
+            nullifier: toHex(nullifier),
+            merkle_proof_length: depth,
+            expected_merkle_root: toHex(root),
+            recipient: toHex(recipientA),
+            commitment: toHex(commitment),
+            value: toHex(value),
+            pk_b: toHex(secret),
+            random: toHex(salt),
+            merkle_proof_indices: indices,
+            merkle_proof_siblings: siblings.map(toHex),
+        };
+
+        const inputsB = { ...inputsA, recipient: toHex(recipientB) };
+
+        const { witness: wA } = await noir.execute(inputsA as any);
+        const { witness: wB } = await noir.execute(inputsB as any);
+
+        // Witness/proof material must differ if recipient public input changes
+        expect(JSON.stringify(wA)).not.toBe(JSON.stringify(wB));
+    });
+
+    test("Withdraw Circuit - Invalid Commitment", async () => {
+        const noir = new Noir(withdrawArtifact as any);
+
+        const value = 500n;
+        const secret = 0xabc123n;
+        const salt = 0xdef456n;
+        const recipient = 0x789n;
+
+        const nullifier = await getNullifierHash(value, secret, salt);
+        const commitment = await getCommitment(value, nullifier);
+
+        const depth = 10;
+        const siblings = new Array(depth).fill(0n);
+        const indices = new Array(depth).fill(0);
+        const root = await getRoot(value, secret, salt, nullifier, indices, siblings);
 
         const inputs = {
             nullifier: toHex(nullifier),
@@ -137,8 +177,8 @@ describe("zkVVM Circuit Tests (UltraPlonk)", () => {
             recipient: toHex(recipient),
             commitment: toHex(0xdeadbeefn), // Wrong commitment
             value: toHex(value),
-            pk_b: toHex(pk_b),
-            random: toHex(random),
+            pk_b: toHex(secret),
+            random: toHex(salt),
             merkle_proof_indices: indices,
             merkle_proof_siblings: siblings.map(toHex),
         };

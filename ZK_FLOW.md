@@ -13,15 +13,36 @@ systems (e.g., private balances), this architecture treats assets as **Digital C
 
 ---
 
-## 2. The Data Structure (The "Note")
+## 2. Naming Convention
+
+**Frontend Naming vs. Circuit Parameters**
+
+To improve code clarity, the frontend uses the terms `secret` and `salt` instead of the older `pk_b` 
+and `random`:
+
+| Frontend Name | Circuit ABI Name | Description                                       |
+| :------------ | :--------------- | :------------------------------------------------ |
+| `secret`      | `pk_b`           | Private bearer secret (not a public key).         |
+| `salt`        | `random`         | Cryptographic salt for randomization.             |
+| `nullifier`   | `nullifier`      | Hash-derived unique ID to prevent double-spend.   |
+
+**Implementation Note:** When the frontend invokes Noir circuits or compiled artifacts, it maps 
+`secret` → `pk_b` and `salt` → `random` to match the circuit's ABI. This allows the TypeScript 
+codebase to use clearer, more intuitive names while preserving compatibility with existing compiled 
+circuits.
+
+---
+
+## 3. The Data Structure (The "Note")
 
 A "Note" consists of three components that exist **only** on the client side (User's browser/local
 storage).
 
 | Variable        | Type              | Description                                    | Visibility                                          |
 | :-------------- | :---------------- | :--------------------------------------------- | :-------------------------------------------------- |
-| **`Secret`**    | `Field` (256-bit) | The password to spend the funds.               | **Strictly Private**                                |
-| **`Nullifier`** | `Field` (256-bit) | A unique random ID to prevent double-spending. | **Private** (Hash is Public)                        |
+| **`Secret`**    | `Field` (256-bit) | The password to spend the funds; a bearer secret not tied to your wallet. | **Strictly Private**                                |
+| **`Salt`**      | `Field` (256-bit) | Cryptographic salt used to derive the nullifier. | **Strictly Private**                                |
+| **`Nullifier`** | `Field` (256-bit) | Derived from `salt` and `secret` via Poseidon; unique ID to prevent double-spending. | **Private** (Hash is Public)                        |
 | **`Value`**     | `Field` (256-bit) | The amount (e.g., `1000000` for 1 USDC).       | **Public** (in Deposit) / **Private** (in Withdraw) |
 
 ### The Commitment (On-Chain Storage)
@@ -29,7 +50,11 @@ storage).
 To deposit funds, we mathematically "wrap" the Note into a Commitment using the Poseidon hash
 function.
 
-$$Commitment = Poseidon([Secret, Nullifier, Value])$$
+First, the `Nullifier` is derived from `salt` and `secret`:
+$$Nullifier = Poseidon([salt, secret])$$
+
+Then the `Commitment` is computed as:
+$$Commitment = Poseidon([value, nullifier])$$
 
 - **Why Poseidon?** It is a ZK-friendly hash function, making proof generation cheap and fast
   (unlike SHA-256).
@@ -43,22 +68,24 @@ $$Commitment = Poseidon([Secret, Nullifier, Value])$$
 **Actor:** Depositor **Goal:** Lock funds into a secret code.
 
 1.  **Generate Randomness:**
-    - Client generates a random `Secret` and `Random Nullifier`.
-2.  **Calculate Commitment:**
-    - `const commitment = poseidon([secret, nullifier, value]);`
+    - Client generates a random `secret` (bearer key) and `salt` (cryptographic nonce) using a secure RNG.
+2.  **Calculate Nullifier and Commitment:**
+    - `const nullifier = poseidon2([salt, secret]);`
+    - `const commitment = poseidon2([value, nullifier]);`
 3.  **Submit to Blockchain:**
-    - Call `Vault.deposit(commitment)` and send the `Value` (ETH/ERC20).
-4.  **Store Secret:**
-    - **CRITICAL:** The browser must save the `Secret` and `Nullifier`. If these are lost, the funds
-      are burned forever.
+    - Call `zkVVM.deposit(commitment, amount)` and send the `amount` (ETH/ERC20).
+4.  **Store Secrets:**
+    - **CRITICAL:** The browser must save the `secret` and `salt`. If these are lost, the funds
+      are burned forever. The note is stored as: `zk-<amount>-<secret>-<salt>`.
 5.  **Chain State:**
-    - The Contract adds `Commitment` to the **Merkle Tree**.
+    - The Contract adds `commitment` to the **Merkle Tree**.
+    - A new `Deposit` event is emitted with the commitment.
 
 ### Step 2: The Transfer (Off-Chain)
 
 **Actor:** Depositor -> Receiver **Goal:** Hand over the cash.
 
-1.  **Mechanism:** The Depositor sends the `Secret` and `Nullifier` to the Receiver.
+1.  **Mechanism:** The Depositor sends the `secret` and `salt` to the Receiver (note string or raw values).
 2.  **Medium:**
     - Encrypted Chat (Signal/WhatsApp/Telegram).
     - QR Code (In person).
@@ -69,20 +96,20 @@ $$Commitment = Poseidon([Secret, Nullifier, Value])$$
 
 **Actor:** Receiver **Goal:** Cash out the Note to a clean wallet.
 
-1.  **Input:** Receiver enters `Secret` + `Nullifier` + `Recipient Address`.
+1.  **Input:** Receiver enters `secret` + `salt` + `recipient address`.
 2.  **Generate ZK Proof (Noir):**
-    - **Private Inputs:** `Secret`, `Nullifier`, `Value`, `Merkle Path`.
-    - **Public Inputs:** `Merkle Root`, `Nullifier Hash`, `Recipient Address`.
+    - **Private Inputs:** `secret`, `salt`, `value`, `merkle_proof_indices`, `merkle_proof_siblings`.
+    - **Public Inputs:** `nullifier`, `merkle_proof_length`, `expected_merkle_root`, `recipient`, `commitment`.
 3.  **The Circuit Proves:**
-    - "I know a `Secret` that hashes to a `Commitment` inside the Merkle Tree Root."
-    - "The `Nullifier Hash` matches the `Nullifier` in the Commitment."
-    - "I am authorizing the withdrawal **ONLY** to this `Recipient Address`."
+    - "I know a `secret` and `salt` that derive a `nullifier` matching the public input."
+    - "The `nullifier` and `value` are part of a `commitment` inside the Merkle Tree Root."
+    - "I am authorizing the withdrawal **ONLY** to this `recipient address`."
 4.  **Submit to Blockchain:**
-    - Relayer (Fisher) submits the proof.
-    - Contract verifies proof.
-    - Contract checks `Nullifier Hash` is unused.
-    - Contract transfers funds to `Recipient`.
-    - Contract marks `Nullifier Hash` as **Spent**.
+    - Relayer (Fisher) submits `zkVVM.withdraw(proof, publicInputs, ciphertext)`.
+    - Contract verifies proof via UltraVerifier.
+    - Contract checks `nullifier` is unused (not in nullifier set).
+    - Contract transfers funds to `recipient`.
+    - Contract marks `nullifier` as **Spent**.
 
 ---
 

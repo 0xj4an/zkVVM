@@ -4,7 +4,9 @@
 
 - **value** no va como public input: es **private input**. Los public inputs son 5: `nullifier`, `merkle_proof_length`, `expected_merkle_root`, `recipient`, `commitment`.
 - **commitment** = H(value, nullifier); usar `./scripts/compute_commitment.sh` o el commitment_helper para obtenerlo.
-- Para la proof: rellenar los 5 públicos y los privados (value, pk_b, random, merkle_proof_*). El contrato usa `withdrawV2b(proof, publicInputs, ciphertext)`; el ciphertext se genera off-chain con la misma clave que el contrato (ver `lib/withdraw-v2b-ciphertext.ts` y `bun run gen-ciphertext`).
+-- Para la proof: rellenar los 5 públicos y los privados (value, secret, salt, merkle_proof_*). El contrato usa `withdrawV2b(proof, publicInputs, ciphertext)`; el ciphertext se genera off-chain con la misma clave que el contrato (ver `lib/withdraw-v2b-ciphertext.ts` y `bun run gen-ciphertext`).
+
+	Nota: el código fuente y los artefactos compilados de Noir todavía nombran los privados `pk_b` y `random`. En el flujo frontend usamos `secret`/`salt` por claridad y los mapeamos a `pk_b`/`random` cuando invocamos el circuito o el probador.
 
 ## WithdrawProver.toml (v2a – value público)
 

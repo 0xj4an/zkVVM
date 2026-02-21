@@ -6,8 +6,8 @@ import { CompiledCircuit } from '@noir-lang/types';
 
 export interface StoredNote {
     amount: string;
-    pk_b: string;
-    random: string;
+    secret: string;
+    salt: string;
     date: string;
     noteStr: string;
 }
@@ -38,27 +38,27 @@ export function useZK() {
     const mintBearerToken = useCallback(async (amount: string): Promise<StoredNote> => {
         try {
             const value = BigInt(Math.floor(parseFloat(amount) * 1e6)); // Assuming 6 decimals for USDC-like
-            const pk_b = zkService.generateSecret();
-            const random = zkService.generateSecret();
+            const secret = zkService.generateSecret();
+            const salt = zkService.generateSecret();
 
             const note = await zkService.generateNote(
                 noteGeneratorArtifact as CompiledCircuit,
                 value,
-                pk_b,
-                random
+                secret,
+                salt
             );
 
             // note.entry is to be stored in the smart contract (commitment)
             console.log(`Entry: ${note.entry.toString()}`)
 
-            const pk_b_hex = `0x${pk_b.toString(16)}`;
-            const random_hex = `0x${random.toString(16)}`;
-            const noteStr = `zk-${amount}-${pk_b_hex}-${random_hex}`;
+            const secret_hex = `0x${secret.toString(16)}`;
+            const salt_hex = `0x${salt.toString(16)}`;
+            const noteStr = `zk-${amount}-${secret_hex}-${salt_hex}`;
 
             const storedNote: StoredNote = {
                 amount,
-                pk_b: pk_b_hex,
-                random: random_hex,
+                secret: secret_hex,
+                salt: salt_hex,
                 date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
                 noteStr
             };
@@ -98,14 +98,14 @@ export function useZK() {
 
         try {
             // 1. Parse note string
-            const { amount, pk_b, random } = zkService.parseNoteString(noteStr);
+            const { amount, secret, salt } = zkService.parseNoteString(noteStr);
 
             // 2. Recompute note
             const note = await zkService.recomputeNote(
                 noteGeneratorArtifact as CompiledCircuit,
                 amount,
-                pk_b,
-                random
+                secret,
+                salt
             );
 
             // 3. Mock Merkle Proof (Circuit expects depth 10, but we provide length 1)
@@ -136,6 +136,30 @@ export function useZK() {
         }
     }, [isInitialized]);
 
+    const getOnchainStatus = useCallback(async (noteStr: string, publicClient: any) => {
+        if (!isInitialized) throw new Error('ZKService not initialized');
+        const { amount, secret, salt } = zkService.parseNoteString(noteStr);
+        const note = await zkService.recomputeNote(
+            noteGeneratorArtifact as CompiledCircuit,
+            amount,
+            secret,
+            salt
+        );
+
+        // use publicClient to query on-chain commitment/nullifier status
+        try {
+            const commitmentHex = `0x${note.entry.toString(16)}`;
+            const nullifierHex = `0x${note.nullifier.toString(16)}`;
+            const zkVVMAddress = (import.meta.env.VITE_ZKVVM_ADDRESS || '0x0000000000000000000000000000000000000000') as string;
+            const zkVVMAbi = (await import('../../../artifacts/contracts/zkVVM.sol/zkVVM.json')).abi as any;
+            const committed = await publicClient.readContract({ address: zkVVMAddress, abi: zkVVMAbi, functionName: 'commitments', args: [commitmentHex] });
+            const nullifierUsed = await publicClient.readContract({ address: zkVVMAddress, abi: zkVVMAbi, functionName: 'nullifiers', args: [nullifierHex] });
+            return { committed, nullifierUsed, commitment: commitmentHex, nullifier: nullifierHex, root: note.root };
+        } catch (err: any) {
+            throw err;
+        }
+    }, [isInitialized]);
+
     return {
         isInitialized,
         isInitializing,
@@ -146,5 +170,6 @@ export function useZK() {
         getStoredNotes,
         copyNote,
         generateWithdrawalProof
+        , getOnchainStatus
     };
 }

@@ -71,11 +71,13 @@ graph LR
 
 Bearer notes are stored and shared as strings with the following format:
 
-`zk-<amount>-<pk_b>-<random>`
+`zk-<amount>-<secret>-<salt>`
 
 - **amount**: The value of the note in decimal (e.g., `100.00`).
-- **pk_b**: The bearer secret key in hex format (e.g., `0x123...`).
-- **random**: A random salt used for nullifier and commitment derivation in hex format.
+- **secret**: The bearer secret key in hex format (e.g., `0x123...`). This is the private secret you must keep safe.
+- **salt**: A cryptographic salt used for nullifier and commitment derivation in hex format.
+
+Note: the Noir circuits and compiled artifacts still use parameter names `pk_b` and `random`. Frontend code uses `secret`/`salt` for clarity and maps them to `pk_b`/`random` when invoking the circuits.
 
 This string contains all the secrets required to recompute the note's nullifier and generate a ZK proof for withdrawal.
 

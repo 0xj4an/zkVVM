@@ -1,15 +1,22 @@
 import { BaseService, SignMethod, SignedAction } from '@evvm/evvm-js';
 import type { HexString, IPayData, ISigner } from '@evvm/evvm-js';
-import { zeroAddress } from 'viem';
+import { zeroAddress, type Address } from 'viem';
 import { IDepositData, IWithdrawData } from '../../types/zkVVM.types.js';
+import zkVVMArtifact from '../../../artifacts/contracts/zkVVM.sol/zkVVM.json';
+
+// These helpers provide optional on-chain reads/writes using viem wallet/public clients
+// The `useEvvm` hook (in `lib/hooks/useEvvm.ts`) returns the required clients.
 
 export class zkVVM extends BaseService {
-  constructor(signer: ISigner) {
+  constructor(signer: ISigner, address?: Address, abi?: any, chainId: number = 11155111) {
     super({
       signer,
-      address: `0x00`,
-      abi: [], // todo: define this
-      chainId: 11155111, // sepolia
+      address: (address ||
+        import.meta.env.VITE_ZKVVM_ADDRESS ||
+        '0x0000000000000000000000000000000000000000') as Address,
+      abi: abi || (zkVVMArtifact.abi as any),
+      chainId,
+      evvmId: 777n,
     });
   }
 
@@ -54,6 +61,7 @@ export class zkVVM extends BaseService {
   async withdraw({
     proof,
     publicInputs,
+    recipient,
     originExecutor = zeroAddress,
     nonce,
   }: {
@@ -76,6 +84,7 @@ export class zkVVM extends BaseService {
     // todo: add recipient
     return new SignedAction(this, evvmId, functionName, {
       user: this.signer.address,
+      recipient,
       proof,
       publicInputs,
       originExecutor,
@@ -83,4 +92,13 @@ export class zkVVM extends BaseService {
       signature,
     });
   }
+}
+
+export function createZkVVMService(signer: ISigner) {
+  return new zkVVM(
+    signer,
+    (import.meta.env.VITE_ZKVVM_ADDRESS || undefined) as Address,
+    zkVVMArtifact.abi,
+    11155111,
+  );
 }

@@ -1,6 +1,7 @@
 /**
  * Generates note data for a single-leaf deposit using the same Noir circuit (Poseidon) as withdraw.
- * pk_b = wallet address, random = timestamp (seconds). Uses noir_js so no separate poseidon lib needed.
+ * `secret` = wallet address (or bearer secret), `salt` = cryptographic salt.
+ * Uses noir_js so no separate poseidon lib needed.
  */
 import { Noir } from '@noir-lang/noir_js';
 import { getNoteGeneratorCircuit } from '../../noir/compile.js';
@@ -8,8 +9,8 @@ import { getNoteGeneratorCircuit } from '../../noir/compile.js';
 export const NOTE_STORAGE_KEY = 'shielded_pool_note';
 
 export interface NoteData {
-  pk_b: string;
-  random: string;
+  secret: string;
+  salt: string;
   nullifier: string;
   commitment: string;
   value: string;
@@ -42,21 +43,28 @@ function fieldToHex(v: unknown): string {
  */
 export async function generateNote(
   value: bigint,
-  walletAddress: string,
-  randomTimestampSeconds?: number,
+  walletAddressOrSecret: string,
+  saltOverride?: number,
 ): Promise<{ note: NoteData; commitmentHex: `0x${string}`; rootHex: `0x${string}` }> {
-  const pk_b = BigInt(walletAddress);
-  const random =
-    randomTimestampSeconds !== undefined
-      ? BigInt(randomTimestampSeconds)
-      : BigInt(Math.floor(Date.now() / 1000));
+  const secret = BigInt(walletAddressOrSecret);
+  let salt: bigint;
+  if (saltOverride !== undefined) {
+    salt = BigInt(saltOverride);
+  } else {
+    // secure RNG for salt
+    const bytes = new Uint8Array(32);
+    if (typeof window !== 'undefined' && window.crypto) window.crypto.getRandomValues(bytes);
+    else for (let i = 0; i < 32; i++) bytes[i] = Math.floor(Math.random() * 256);
+    salt = 0n;
+    for (const b of bytes) salt = (salt << 8n) + BigInt(b);
+  }
 
   const noir = await getNoteGeneratorNoir();
-  const inputs: Record<string, string> = {
-    value: '0x' + value.toString(16),
-    pk_b: '0x' + pk_b.toString(16),
-    random: '0x' + random.toString(16),
-  };
+  const inputs: Record<string, string> = {};
+  inputs['value'] = '0x' + value.toString(16);
+  // compiled circuit expects `pk_b` and `random` keys; map from our `secret`/`salt`
+  inputs['pk_b'] = '0x' + secret.toString(16);
+  inputs['random'] = '0x' + salt.toString(16);
   const { returnValue } = await noir.execute(inputs);
 
   const arr = Array.isArray(returnValue) ? returnValue : [returnValue];
@@ -68,8 +76,8 @@ export async function generateNote(
   ];
 
   const note: NoteData = {
-    pk_b: pk_b.toString(),
-    random: random.toString(),
+    secret: secret.toString(),
+    salt: salt.toString(),
     nullifier: nullifierHex,
     commitment: commitmentHex,
     value: value.toString(),

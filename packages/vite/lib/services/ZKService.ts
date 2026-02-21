@@ -9,8 +9,8 @@ import abiWasm from '@noir-lang/noirc_abi/web/noirc_abi_wasm_bg.wasm?url';
 
 export interface Note {
   value: bigint;
-  pk_b: bigint; // Arbitrary bearer secret (not necessarily a recipient address)
-  random: bigint; // Randomness/salt
+  secret: bigint; // Arbitrary bearer secret (private secret held by bearer)
+  salt: bigint; // Random salt (must be cryptographically random)
   nullifier: bigint;
   commitment: bigint;
   entry: bigint;
@@ -121,7 +121,7 @@ export class ZKService {
     );
   }
   /**
-   * Generates a random Field-sized secret for pk_b.
+   * Generates a random Field-sized secret for the bearer note.
    */
   generateSecret(): bigint {
     return this.getRandomBigInt();
@@ -129,28 +129,30 @@ export class ZKService {
 
   /**
    * High-level API for creating a note using note_generator circuit.
-   * @param pk_b An arbitrary secret (bearer key). Does not need to be a wallet address.
+   * @param secret An arbitrary secret (bearer key). Does not need to be a wallet address.
    */
   async generateNote(
     circuit: CompiledCircuit,
     value: bigint,
-    pk_b: bigint,
-    randomOverride?: bigint,
+    secretOverride?: bigint,
+    saltOverride?: bigint,
   ): Promise<Note> {
-    const random = randomOverride ?? BigInt(Math.floor(Date.now() / 1000));
+    // Use cryptographically secure RNG for both secret and salt
+    const secret = secretOverride ?? this.generateSecret();
+    const salt = saltOverride ?? this.generateSecret();
 
-    const result = await this.executeCircuit(circuit, {
-      value,
-      pk_b,
-      random,
-    });
+    // The compiled circuits expect parameter names `pk_b` and `random`.
+    const prepared: Record<string, any> = { value };
+    prepared['pk_b'] = secret;
+    prepared['random'] = salt;
+    const result = await this.executeCircuit(circuit, prepared);
 
     const [nullifier, commitment, entry, root] = result.map((r: any) => this.toBigInt(r));
 
     return {
       value,
-      pk_b,
-      random,
+      secret,
+      salt,
       nullifier,
       commitment,
       entry,
@@ -159,18 +161,18 @@ export class ZKService {
   }
 
   /**
-   * Parses a note string in the format: zk-<amount>-<pk_b>-<random>
+   * Parses a note string in the format: zk-<amount>-<secret>-<salt>
    */
   parseNoteString(noteStr: string) {
     const parts = noteStr.split('-');
     if (parts.length !== 4 || parts[0] !== 'zk') {
-      throw new Error('Invalid note string format. Expected: zk-<amount>-<pk_b>-<random>');
+      throw new Error('Invalid note string format. Expected: zk-<amount>-<secret>-<salt>');
     }
 
     return {
       amount: parts[1],
-      pk_b: parts[2],
-      random: parts[3],
+      secret: parts[2],
+      salt: parts[3],
     };
   }
 
@@ -180,14 +182,14 @@ export class ZKService {
   async recomputeNote(
     circuit: CompiledCircuit,
     amount: string,
-    pk_b_hex: string,
-    random_hex: string,
+    secret_hex: string,
+    salt_hex: string,
   ): Promise<Note> {
     const value = BigInt(Math.floor(parseFloat(amount) * 1e6)); // Assuming 6 decimals
-    const pk_b = BigInt(pk_b_hex);
-    const random = BigInt(random_hex);
+    const secret = BigInt(secret_hex);
+    const salt = BigInt(salt_hex);
 
-    return this.generateNote(circuit, value, pk_b, random);
+    return this.generateNote(circuit, value, secret, salt);
   }
 
   /**
@@ -201,18 +203,18 @@ export class ZKService {
     merkleProof: { indices: number[]; siblings: bigint[] },
     merkleProofLength?: number,
   ) {
-    const inputs = {
-      nullifier: note.nullifier,
-      merkle_proof_length: merkleProofLength ?? merkleProof.indices.length,
-      expected_merkle_root: merkleRoot,
-      recipient: recipient,
-      commitment: note.commitment,
-      value: note.value,
-      pk_b: note.pk_b,
-      random: note.random,
-      merkle_proof_indices: merkleProof.indices,
-      merkle_proof_siblings: merkleProof.siblings,
-    };
+    const inputs: Record<string, any> = {};
+    inputs['nullifier'] = note.nullifier;
+    inputs['merkle_proof_length'] = merkleProofLength ?? merkleProof.indices.length;
+    inputs['expected_merkle_root'] = merkleRoot;
+    inputs['recipient'] = recipient;
+    inputs['commitment'] = note.commitment;
+    inputs['value'] = note.value;
+    // compiled circuit expects `pk_b` and `random` keys; map from our `secret`/`salt` fields
+    inputs['pk_b'] = note.secret;
+    inputs['random'] = note.salt;
+    inputs['merkle_proof_indices'] = merkleProof.indices;
+    inputs['merkle_proof_siblings'] = merkleProof.siblings;
 
     const noir = new Noir(circuit);
     return await noir.execute(this.prepareInputs(inputs));
