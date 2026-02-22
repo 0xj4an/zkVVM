@@ -59,3 +59,4 @@ artifacts
 noir/target/
 dist
 bun.lockb
+contracts/
