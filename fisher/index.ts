@@ -135,6 +135,34 @@ Bun.serve({
       }
     }
 
+    // Servir archivos estáticos del frontend
+    if (req.method === 'GET') {
+      const filePath = url.pathname === '/' ? '/index.html' : url.pathname;
+      const staticPath = resolve(__dirname, '..', 'packages', 'vite', 'dist', filePath);
+
+      try {
+        const file = Bun.file(staticPath);
+        if (await file.exists()) {
+          return new Response(file);
+        }
+      } catch (error) {
+        console.error('Error serving static file:', error);
+      }
+
+      // Si no existe el archivo, servir index.html (SPA routing)
+      try {
+        const indexPath = resolve(__dirname, '..', 'packages', 'vite', 'dist', 'index.html');
+        const indexFile = Bun.file(indexPath);
+        if (await indexFile.exists()) {
+          return new Response(indexFile, {
+            headers: { 'Content-Type': 'text/html' }
+          });
+        }
+      } catch (error) {
+        console.error('Error serving index.html:', error);
+      }
+    }
+
     return jsonResponse(404, { error: 'Not found' });
   },
 });

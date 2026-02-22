@@ -1,5 +1,5 @@
 [build]
-buildCommand = "bun install"
+buildCommand = "bun install && bun --filter vite build"
 
 [deploy]
 startCommand = "bun run start:fisher"

@@ -4,6 +4,7 @@
   "description": "A template repository to get started with writing zero knowledge programs with Noir.",
   "scripts": {
     "dev": "vite dev",
+    "build": "vite build",
     "wagmi": "wagmi generate"
   },
   "dependencies": {
