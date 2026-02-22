@@ -1,4 +1,4 @@
-import { Barretenberg, Fr } from '@aztec/bb.js';
+import { Barretenberg, Fr, UltraHonkBackend } from '@aztec/bb.js';
 import { Noir } from '@noir-lang/noir_js';
 import { CompiledCircuit } from '@noir-lang/types';
 import initACVM from '@noir-lang/acvm_js/web/acvm_js.js';
@@ -227,13 +227,32 @@ export class ZKService {
    * For now, we use the witness as the proof representation.
    */
   async generateProofFromWitness(circuit: CompiledCircuit, witness: Uint8Array) {
-    // Convert witness to hex string - this is the actual proof data
-    const proofHex = '0x' + Array.from(witness).map(b => b.toString(16).padStart(2, '0')).join('');
-    
-    console.log('Generated proof from witness, length:', proofHex.length);
+    console.log('Generating proof using UltraHonkBackend...');
+
+    // Create backend from circuit bytecode
+    const backend = new UltraHonkBackend(
+      (circuit as any).bytecode,
+      { threads: 1 },
+      { recursive: false }
+    );
+
+    // @ts-expect-error - instantiate() is used in tests but marked private in types
+    await backend.instantiate();
+    console.log('Backend instantiated');
+
+    // Generate the actual ZK proof from witness
+    const proofData = await backend.generateProof(witness);
+    console.log('Proof generated, length:', proofData.proof.length);
+
+    // Convert proof to hex string
+    const proofHex = '0x' + Array.from(proofData.proof).map(b => b.toString(16).padStart(2, '0')).join('');
+
     console.log('Proof (first 100 chars):', proofHex.slice(0, 100) + '...');
-    
-    return { 
+
+    // Destroy backend to free memory
+    await backend.destroy();
+
+    return {
       proof: proofHex,
       publicInputs: [] // Will be populated by caller with circuit inputs
     };

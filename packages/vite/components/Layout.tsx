@@ -10,16 +10,118 @@ function WalletButton() {
     const { address, isConnected } = useAccount();
     const { connect } = useConnect();
     const { disconnect } = useDisconnect();
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [copySuccess, setCopySuccess] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleCopyAddress = async () => {
+        if (address) {
+            await navigator.clipboard.writeText(address);
+            setCopySuccess(true);
+            setTimeout(() => setCopySuccess(false), 2000);
+        }
+    };
 
     if (isConnected && address) {
         return (
-            <button className="wallet-btn connected" onClick={() => disconnect()}>
-                <div className="wallet-avatar">B4</div>
-                <div className="wallet-info">
-                    <span className="wallet-label">VERIFIED ACCOUNT</span>
-                    <span className="wallet-address">{`${address.slice(0, 6)}...${address.slice(-4)}`}</span>
-                </div>
-            </button>
+            <div style={{ position: 'relative' }} ref={dropdownRef}>
+                <button className="wallet-btn connected" onClick={() => setShowDropdown(!showDropdown)}>
+                    <div className="wallet-avatar">B4</div>
+                    <div className="wallet-info">
+                        <span className="wallet-label">VERIFIED ACCOUNT</span>
+                        <span className="wallet-address">{`${address.slice(0, 6)}...${address.slice(-4)}`}</span>
+                    </div>
+                </button>
+
+                {showDropdown && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        right: 0,
+                        backgroundColor: 'rgba(10, 10, 20, 0.95)',
+                        border: '1px solid rgba(0, 255, 170, 0.2)',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        minWidth: '280px',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                        backdropFilter: 'blur(20px)',
+                        zIndex: 1000,
+                    }}>
+                        <div style={{ marginBottom: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            WALLET ADDRESS
+                        </div>
+                        <div style={{
+                            display: 'flex',
+                            gap: '8px',
+                            alignItems: 'center',
+                            marginBottom: '16px',
+                            padding: '10px',
+                            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255, 255, 255, 0.05)'
+                        }}>
+                            <code style={{
+                                flex: 1,
+                                fontSize: '12px',
+                                wordBreak: 'break-all',
+                                color: 'var(--accent-color)'
+                            }}>
+                                {address}
+                            </code>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                                onClick={handleCopyAddress}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 16px',
+                                    backgroundColor: copySuccess ? 'rgba(0, 255, 170, 0.2)' : 'rgba(0, 255, 170, 0.1)',
+                                    border: '1px solid rgba(0, 255, 170, 0.3)',
+                                    borderRadius: '8px',
+                                    color: 'var(--accent-color)',
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                }}
+                            >
+                                {copySuccess ? '✓ Copied!' : '📋 Copy Address'}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    disconnect();
+                                    setShowDropdown(false);
+                                }}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 16px',
+                                    backgroundColor: 'rgba(255, 70, 70, 0.1)',
+                                    border: '1px solid rgba(255, 70, 70, 0.3)',
+                                    borderRadius: '8px',
+                                    color: '#ff4646',
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                }}
+                            >
+                                🔌 Disconnect
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
         );
     }
 

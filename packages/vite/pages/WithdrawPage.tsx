@@ -18,6 +18,7 @@ export function WithdrawPage() {
     const [withdrawAction, setWithdrawAction] = useState<any | null>(null);
     const [withdrawTxHash, setWithdrawTxHash] = useState<string | null>(null);
     const [isExecutingWithdraw, setIsExecutingWithdraw] = useState(false);
+    const [executionError, setExecutionError] = useState<string | null>(null);
 
     const handleWithdraw = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -26,6 +27,7 @@ export function WithdrawPage() {
         setWithdrawActionJson(null);
         setWithdrawTxHash(null);
         setWithdrawAction(null);
+        setExecutionError(null);
         try {
             console.log('=== WITHDRAW FLOW START ===');
             console.log('Input note:', note);
@@ -134,10 +136,25 @@ export function WithdrawPage() {
         if (!withdrawAction) return;
         try {
             setIsExecutingWithdraw(true);
+            setExecutionError(null);
             const hash = await executeWithFisher(withdrawAction);
             if (hash) setWithdrawTxHash(hash);
         } catch (err) {
             console.error('Failed to execute withdraw via fisher:', err);
+
+            // Parse error message to provide user-friendly feedback
+            const errorMsg = err instanceof Error ? err.message : String(err);
+
+            if (errorMsg.includes('nullifier-used')) {
+                setExecutionError('⚠️ This note has already been redeemed. Each note can only be withdrawn once to prevent double-spending.');
+            } else if (errorMsg.includes('merkle-root-not-found')) {
+                setExecutionError('❌ Invalid merkle root. This note may not be registered on-chain yet.');
+            } else if (errorMsg.includes('invalid-proof')) {
+                setExecutionError('❌ Proof verification failed. Please regenerate the proof.');
+            } else {
+                // Generic error
+                setExecutionError(`❌ Transaction failed: ${errorMsg.substring(0, 200)}`);
+            }
         } finally {
             setIsExecutingWithdraw(false);
         }
@@ -217,15 +234,68 @@ export function WithdrawPage() {
                         </button>
                     </form>
 
-                    {withdrawActionJson && (
+                    {withdrawTxHash && (
+                        <div className="success-message fade-in" style={{ marginTop: '20px', padding: '20px', backgroundColor: '#00ffaa20', border: '2px solid #00ffaa', borderRadius: '12px' }}>
+                            <h3 style={{ color: '#00ffaa', marginBottom: '15px' }}>✅ Withdraw Transaction Executed!</h3>
+
+                            <div style={{ fontSize: '14px', marginBottom: '10px' }}>
+                                <strong>Recipient Address:</strong>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '20px' }}>
+                                <code style={{ flex: 1, padding: '8px', backgroundColor: '#00000040', borderRadius: '6px', fontSize: '12px', wordBreak: 'break-all' }}>
+                                    {address}
+                                </code>
+                                <button
+                                    className="btn-secondary"
+                                    onClick={() => navigator.clipboard.writeText(address)}
+                                    style={{ minWidth: '80px' }}
+                                >
+                                    📋 Copy
+                                </button>
+                            </div>
+
+                            <div style={{ fontSize: '14px', marginBottom: '10px' }}>
+                                <strong>Transaction Hash:</strong>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px' }}>
+                                <code style={{ flex: 1, padding: '8px', backgroundColor: '#00000040', borderRadius: '6px', fontSize: '12px', wordBreak: 'break-all' }}>
+                                    {withdrawTxHash}
+                                </code>
+                                <button
+                                    className="btn-secondary"
+                                    onClick={() => navigator.clipboard.writeText(withdrawTxHash)}
+                                    style={{ minWidth: '80px' }}
+                                >
+                                    📋 Copy
+                                </button>
+                            </div>
+                            <a
+                                href={`https://sepolia.etherscan.io/tx/${withdrawTxHash}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn-primary"
+                                style={{ display: 'inline-block', textDecoration: 'none' }}
+                            >
+                                🔗 View on Etherscan
+                            </a>
+                        </div>
+                    )}
+
+                    {withdrawActionJson && !withdrawTxHash && (
                         <div className="signed-actions-box">
                             <h4>Generated Signed Action</h4>
                             <div className="signed-action">
                                 <div className="signed-action-header">zkVVM.withdraw()</div>
                                 <pre className="signed-action-json">{withdrawActionJson}</pre>
-                                {withdrawTxHash && <div className="text-secondary">tx: {withdrawTxHash}</div>}
                                 <button className="btn-secondary" onClick={() => navigator.clipboard.writeText(withdrawActionJson)}>📋 Copy JSON</button>
                             </div>
+
+                            {executionError && (
+                                <div className="error-message fade-in" style={{ marginTop: '15px', marginBottom: '15px' }}>
+                                    {executionError}
+                                </div>
+                            )}
+
                             <button className="fisher-execute-btn" onClick={handleExecuteWithdraw} disabled={!withdrawAction || isExecutingWithdraw}>
                                 {isExecutingWithdraw ? 'EXECUTING...' : 'EXECUTE VIA FISHER'}
                             </button>

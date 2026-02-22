@@ -5,13 +5,13 @@
     "core": "0xFA56B6992c880393e3bef99e41e15D0C07803BC1",
     "staking": "0x805F35c5144FeBb5AA49Dbc785634060341A0a5D"
   },
-  "admin": "0x15FF236ecD89b34a527112F7f51d6215609df409",
+  "admin": "0xc696DDC31486D5D8b87254d3AA2985f6D0906b3a",
   "verifier": {
-    "mock": "0x7f211f541ff66a37b51d48c96edbb2a54a109b23",
+    "mock": "0xcaab0b768993663145fc1467029da7e7e6a1b52d",
     "real": ""
   },
   "zkVVM": {
-    "address": "0x37b4879e0a06323cc429307883d1d73e08c78059",
-    "withdrawVerifier": "0x7f211f541ff66a37b51d48c96edbb2a54a109b23"
+    "address": "0x0baf1357ed81bd200f0df7ea559af550c2e5b1a7",
+    "withdrawVerifier": "0xcaab0b768993663145fc1467029da7e7e6a1b52d"
   }
 }

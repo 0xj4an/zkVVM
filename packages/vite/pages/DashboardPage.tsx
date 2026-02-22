@@ -321,13 +321,42 @@ export function DashboardPage() {
             </button>
           </form>
 
-          {payActionJson && depositActionJson && (
+          {depositTxHash && (
+            <div className="success-message fade-in" style={{ marginTop: '20px', padding: '20px', backgroundColor: '#00ffaa20', border: '2px solid #00ffaa', borderRadius: '12px' }}>
+              <h3 style={{ color: '#00ffaa', marginBottom: '10px' }}>✅ Deposit Transaction Executed!</h3>
+              <div style={{ fontSize: '14px', marginBottom: '10px' }}>
+                <strong>Transaction Hash:</strong>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px' }}>
+                <code style={{ flex: 1, padding: '8px', backgroundColor: '#00000040', borderRadius: '6px', fontSize: '12px', wordBreak: 'break-all' }}>
+                  {depositTxHash}
+                </code>
+                <button
+                  className="btn-secondary"
+                  onClick={() => navigator.clipboard.writeText(depositTxHash)}
+                  style={{ minWidth: '80px' }}
+                >
+                  📋 Copy
+                </button>
+              </div>
+              <a
+                href={`https://sepolia.etherscan.io/tx/${depositTxHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary"
+                style={{ display: 'inline-block', textDecoration: 'none' }}
+              >
+                🔗 View on Etherscan
+              </a>
+            </div>
+          )}
+
+          {payActionJson && depositActionJson && !depositTxHash && (
             <div className="signed-actions-box">
               <h4>Generated Signed Actions</h4>
               <div className="signed-action">
                 <div className="signed-action-header">core.pay()</div>
                 <pre className="signed-action-json">{payActionJson}</pre>
-                {payTxHash && <div className="text-secondary">tx: {payTxHash}</div>}
                 <button
                   className="btn-secondary"
                   onClick={() => navigator.clipboard.writeText(payActionJson)}
@@ -338,7 +367,6 @@ export function DashboardPage() {
               <div className="signed-action">
                 <div className="signed-action-header">zkVVM.deposit()</div>
                 <pre className="signed-action-json">{depositActionJson}</pre>
-                {depositTxHash && <div className="text-secondary">tx: {depositTxHash}</div>}
                 <button
                   className="btn-secondary"
                   onClick={() => navigator.clipboard.writeText(depositActionJson)}

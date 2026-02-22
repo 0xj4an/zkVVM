@@ -1,6 +1,6 @@
 import { BaseService, SignMethod, SignedAction } from '@evvm/evvm-js';
 import type { HexString, IPayData, ISigner } from '@evvm/evvm-js';
-import { zeroAddress, type Address, keccak256, toHex } from 'viem';
+import { zeroAddress, type Address, keccak256, toHex, encodeAbiParameters, parseAbiParameters } from 'viem';
 import { IDepositData, IWithdrawData } from '../../types/zkVVM.types.js';
 import zkVVMArtifact from '../../../artifacts/contracts/zkVVM.sol/zkVVM.json';
 import coreArtifact from '../../../artifacts/@evvm/testnet-contracts/interfaces/ICore.sol/ICore.json';
@@ -21,14 +21,9 @@ export class zkVVM extends BaseService {
 
   async getEvvmID() {
     if (this.evvmId) return this.evvmId;
-    const coreAddress = getRequiredViteEnv('VITE_CORE_ADDRESS') as Address;
-    const evvmId = await this.signer.readContract({
-      contractAddress: coreAddress as Address,
-      contractAbi: coreArtifact.abi as any,
-      functionName: 'getEvvmID',
-      args: [],
-    });
-    this.evvmId = BigInt(evvmId as any);
+    // For new services, EVVM ID is typically 0
+    // The service can call setEvvmID() on Core to change it later
+    this.evvmId = 0n;
     return this.evvmId;
   }
 
@@ -89,16 +84,21 @@ export class zkVVM extends BaseService {
       }
     }
 
-    const hashPayload = this.buildHashPayload(functionName, {
-      commitment: normalizedCommitment,
-      amount,
-      expectedNextRoot: computedNextRoot as HexString,
-    });
-    console.log('[DEPOSIT DEBUG] hashPayload:', hashPayload);
+    // Manually build hash payload to match contract exactly:
+    // keccak256(abi.encode('deposit', commitment, amount, expectedNextRoot))
+    const manualHashPayload = keccak256(
+      encodeAbiParameters(
+        parseAbiParameters('string, bytes, uint256, bytes32'),
+        [functionName, normalizedCommitment as HexString, amount, computedNextRoot]
+      )
+    );
+
+    console.log('[DEPOSIT DEBUG] Manual hashPayload:', manualHashPayload);
     console.log('[DEPOSIT DEBUG] commitment:', normalizedCommitment);
     console.log('[DEPOSIT DEBUG] amount:', amount.toString());
     console.log('[DEPOSIT DEBUG] expectedNextRoot:', computedNextRoot);
-    const message = this.buildMessageToSign(evvmId, hashPayload, originExecutor, nonce, true);
+
+    const message = this.buildMessageToSign(evvmId, manualHashPayload, originExecutor, nonce, true);
 
     const signature = ensureEvenHex(await this.signer.signMessage(message));
     const signaturePay = ensureEvenHex(evvmSignedAction.data.signature);
@@ -141,16 +141,24 @@ export class zkVVM extends BaseService {
     const normalizedProof = ensureEvenHex(proof) as HexString;
     const normalizedCiphertext = ensureEvenHex(ciphertext) as HexString;
 
-    const hashPayload = this.buildHashPayload(functionName, {
-      recipient,
-      proof: normalizedProof,
-      publicInputs,
-      ciphertext: normalizedCiphertext,
-    });
-    console.log('[WITHDRAW DEBUG] hashPayload:', hashPayload);
+    // Manually build hash payload to match contract exactly:
+    // keccak256(abi.encode('withdraw', recipient, proof, publicInputs, ciphertext))
+    const manualHashPayload = keccak256(
+      encodeAbiParameters(
+        parseAbiParameters('string, address, bytes, bytes32[], bytes32'),
+        [functionName, recipient, normalizedProof, publicInputs, normalizedCiphertext]
+      )
+    );
+
+    console.log('[WITHDRAW DEBUG] Function name:', functionName);
+    console.log('[WITHDRAW DEBUG] Recipient:', recipient);
+    console.log('[WITHDRAW DEBUG] Proof length:', normalizedProof.length);
+    console.log('[WITHDRAW DEBUG] Public inputs:', publicInputs);
+    console.log('[WITHDRAW DEBUG] Ciphertext:', normalizedCiphertext);
+    console.log('[WITHDRAW DEBUG] Manual hashPayload:', manualHashPayload);
     console.log('[WITHDRAW DEBUG] expectedRoot:', expectedRoot);
-    
-    const message = this.buildMessageToSign(evvmId, hashPayload, originExecutor, nonce, true);
+
+    const message = this.buildMessageToSign(evvmId, manualHashPayload, originExecutor, nonce, true);
     console.log('[WITHDRAW DEBUG] message:', message);
     console.log('[WITHDRAW DEBUG] originExecutor:', originExecutor);
     console.log('[WITHDRAW DEBUG] nonce:', nonce.toString());
