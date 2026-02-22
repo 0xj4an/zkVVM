@@ -149,17 +149,21 @@ Bun.serve({
         console.error('Error serving static file:', error);
       }
 
-      // Si no existe el archivo, servir index.html (SPA routing)
-      try {
-        const indexPath = resolve(__dirname, '..', 'packages', 'vite', 'dist', 'index.html');
-        const indexFile = Bun.file(indexPath);
-        if (await indexFile.exists()) {
-          return new Response(indexFile, {
-            headers: { 'Content-Type': 'text/html' }
-          });
+      // Solo servir index.html como fallback para rutas de navegación (SPA routing)
+      // NO para assets (.js, .css, .wasm, etc.)
+      const isAsset = /\.(js|css|wasm|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/i.test(url.pathname);
+      if (!isAsset) {
+        try {
+          const indexPath = resolve(__dirname, '..', 'packages', 'vite', 'dist', 'index.html');
+          const indexFile = Bun.file(indexPath);
+          if (await indexFile.exists()) {
+            return new Response(indexFile, {
+              headers: { 'Content-Type': 'text/html' }
+            });
+          }
+        } catch (error) {
+          console.error('Error serving index.html:', error);
         }
-      } catch (error) {
-        console.error('Error serving index.html:', error);
       }
     }
 
