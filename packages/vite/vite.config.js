@@ -11,7 +11,7 @@ export default {
     alias: {
       stream: 'stream-browserify',
       events: 'events',
-      pino: '/Users/0xj4an/Documents/GitHub/0xj4an_personal/zkVVM/packages/vite/lib/pino-stub.js',
+      pino: './lib/pino-stub.js',
     },
   },
   optimizeDeps: {
