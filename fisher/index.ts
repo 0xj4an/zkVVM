@@ -30,7 +30,7 @@ const CORE_ABI_PATH = resolve(
 
 const coreErrorSelectors = loadCoreErrorSelectors(CORE_ABI_PATH);
 
-const PORT = Number(process.env.FISHER_PORT || '8787');
+const PORT = Number(process.env.PORT || process.env.FISHER_PORT || '8787');
 const RPC_URL = process.env.EVVM_SEPOLIA_RPC_URL || '';
 const PRIVATE_KEY = process.env.FISHER_PRIVATE_KEY || '';
 const CHAIN_ID = process.env.EVVM_SEPOLIA_CHAIN_ID
