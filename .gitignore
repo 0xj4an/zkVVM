@@ -56,7 +56,6 @@ packages/contracts-backup/
 artifacts
 .yarn/
 
-noir/target/
 dist
 bun.lockb
 contracts/
